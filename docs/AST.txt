@@ -1,0 +1,35 @@
+model -> Ir_version(int), Producer_name(str), Producer_version(str), Domain(str), Model_version(int), Doc_string(str), graph, opset_import
+
+graph -> Name(str), node_list, input_list, output_list, initializer_list?
+
+node_list -> node+
+
+input_list -> value_info+
+
+output_list -> value_info+
+
+initializer_list -> tensor+
+
+node -> Op_type(str), Name(str), (input_list | input_arr), (output_list | output_arr), attribute_list?
+
+input_arr -> Input(str)+
+
+output_arr -> Output(str)+
+
+attribute_list -> attribute+
+
+attribute -> Name(str), Value(str)
+
+value_info -> Name(str), tensor_type
+
+tensor_type -> Elem_type(enum), shape
+
+shape -> dim+
+
+dim -> Dim_value(int) | Dim_param(str)
+
+tensor -> Name(str), Data_type(enum), dims_array, Raw_data(bytes)
+
+dims_array -> Dims_element(int)+
+
+opset_import -> Domain(str), Version(int)

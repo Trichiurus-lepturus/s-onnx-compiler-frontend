@@ -1,0 +1,21 @@
+---
+# 1. Disable everything, then enable key groups:
+Checks: >
+  -*,
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  portability-*,
+  cppcoreguidelines-*,
+  misc-*
+# 2. Make all warnings into errors:
+WarningsAsErrors: '*'
+# 3. Use your .clang-format file for formatting-based checks:
+FormatStyle: file
+# 4. Only run on project headers (adjust regex to your include layout):
+HeaderFilterRegex: '^((?!/build/).)*$'
+# 5. Don’t warn about destructors of temporaries by default:
+AnalyzeTemporaryDtors: false

@@ -1,5 +1,5 @@
-#ifndef LISTENER_HPP
-#define LISTENER_HPP
+#ifndef AST_CONSTRUCTION_LISTENER_HPP
+#define AST_CONSTRUCTION_LISTENER_HPP
 
 #include "S_ONNXBaseListener.h"
 #include "ast/AST.hpp"
@@ -61,4 +61,4 @@ class ASTConstructionListener final : public antlr_sonnx::S_ONNXBaseListener
 
 } // namespace sonnx
 
-#endif // LISTENER_HPP
+#endif // AST_CONSTRUCTION_LISTENER_HPP

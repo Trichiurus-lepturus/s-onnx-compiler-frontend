@@ -25,7 +25,7 @@ void ASTOutputVisitor::visit(const ModelNode &node)
 {
     addIndent();
     m_ss << "(MODEL\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getIrVersion() != nullptr)
     {
         node.getIrVersion()->accept(*this);
@@ -58,7 +58,7 @@ void ASTOutputVisitor::visit(const ModelNode &node)
     {
         node.getOpsetImport()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -67,7 +67,7 @@ void ASTOutputVisitor::visit(const GraphNode &node)
 {
     addIndent();
     m_ss << "(GRAPH\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
@@ -88,7 +88,7 @@ void ASTOutputVisitor::visit(const GraphNode &node)
     {
         node.getInitializerList()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -97,12 +97,12 @@ void ASTOutputVisitor::visit(const NodeListNode &node)
 {
     addIndent();
     m_ss << "(NODE_LIST\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &node : node.getNodes())
     {
         node->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -111,12 +111,12 @@ void ASTOutputVisitor::visit(const InputListNode &node)
 {
     addIndent();
     m_ss << "(INPUT_LIST\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &input : node.getInputs())
     {
         input->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -125,12 +125,12 @@ void ASTOutputVisitor::visit(const OutputListNode &node)
 {
     addIndent();
     m_ss << "(OUTPUT_LIST\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &output : node.getOutputs())
     {
         output->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -139,12 +139,12 @@ void ASTOutputVisitor::visit(const InitializerListNode &node)
 {
     addIndent();
     m_ss << "(INITIALIZER_LIST\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &initializer : node.getInitializers())
     {
         initializer->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -153,7 +153,7 @@ void ASTOutputVisitor::visit(const NodeNode &node)
 {
     addIndent();
     m_ss << "(NODE\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getOpType() != nullptr)
     {
         node.getOpType()->accept(*this);
@@ -174,7 +174,7 @@ void ASTOutputVisitor::visit(const NodeNode &node)
     {
         node.getAttributeList()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -183,12 +183,12 @@ void ASTOutputVisitor::visit(const InputArrNode &node)
 {
     addIndent();
     m_ss << "(INPUT_ARR\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &elem : node.getInputElements())
     {
         elem->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -197,12 +197,12 @@ void ASTOutputVisitor::visit(const OutputArrNode &node)
 {
     addIndent();
     m_ss << "(OUTPUT_ARR\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &elem : node.getOutputElements())
     {
         elem->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -211,12 +211,12 @@ void ASTOutputVisitor::visit(const AttributeListNode &node)
 {
     addIndent();
     m_ss << "(ATTRIBUTE_LIST\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &attr : node.getAttributes())
     {
         attr->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -225,7 +225,7 @@ void ASTOutputVisitor::visit(const AttributeNode &node)
 {
     addIndent();
     m_ss << "(ATTRIBUTE\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
@@ -234,7 +234,7 @@ void ASTOutputVisitor::visit(const AttributeNode &node)
     {
         node.getValue()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -243,7 +243,7 @@ void ASTOutputVisitor::visit(const ValueInfoNode &node)
 {
     addIndent();
     m_ss << "(VALUE_INFO\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
@@ -252,7 +252,7 @@ void ASTOutputVisitor::visit(const ValueInfoNode &node)
     {
         node.getTensorType()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -261,7 +261,7 @@ void ASTOutputVisitor::visit(const TensorTypeNode &node)
 {
     addIndent();
     m_ss << "(TENSOR_TYPE\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getElemType() != nullptr)
     {
         node.getElemType()->accept(*this);
@@ -270,7 +270,7 @@ void ASTOutputVisitor::visit(const TensorTypeNode &node)
     {
         node.getShape()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -279,12 +279,12 @@ void ASTOutputVisitor::visit(const ShapeNode &node)
 {
     addIndent();
     m_ss << "(SHAPE\n";
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &dim : node.getDimElements())
     {
         dim->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -293,12 +293,12 @@ void ASTOutputVisitor::visit(const DimNode &node)
 {
     addIndent();
     m_ss << "(DIM\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getValue() != nullptr)
     {
         node.getValue()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -307,7 +307,7 @@ void ASTOutputVisitor::visit(const TensorNode &node)
 {
     addIndent();
     m_ss << "(TENSOR\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
@@ -324,7 +324,7 @@ void ASTOutputVisitor::visit(const TensorNode &node)
     {
         node.getRawData()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -333,12 +333,12 @@ void ASTOutputVisitor::visit(const DimsArrayNode &node)
 {
     addIndent();
     m_ss << "(DIM\n"; // Using DIM as per getASTNodeType() implementation
-    m_indent_level++;
+    ++m_indent_level;
     for (const auto &dim : node.getDimsElements())
     {
         dim->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
@@ -347,7 +347,7 @@ void ASTOutputVisitor::visit(const OpsetImportNode &node)
 {
     addIndent();
     m_ss << "(OPSET_IMPORT\n";
-    m_indent_level++;
+    ++m_indent_level;
     if (node.getDomain() != nullptr)
     {
         node.getDomain()->accept(*this);
@@ -356,7 +356,7 @@ void ASTOutputVisitor::visit(const OpsetImportNode &node)
     {
         node.getVersion()->accept(*this);
     }
-    m_indent_level--;
+    --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }

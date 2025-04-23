@@ -1,6 +1,7 @@
-#ifndef VISITOR_HPP
-#define VISITOR_HPP
+#ifndef AST_OUTPUT_VISITOR_HPP
+#define AST_OUTPUT_VISITOR_HPP
 
+#include "Visitor.hpp"
 #include <sstream>
 
 #define SPACE_1 " "
@@ -11,7 +12,7 @@
 namespace sonnx
 {
 
-class ASTOutputVisitor
+class ASTOutputVisitor : public Visitor
 {
   private:
     std::stringstream m_ss;
@@ -34,44 +35,37 @@ class ASTOutputVisitor
     }
 
   public:
-    ASTOutputVisitor() = default;
-    virtual ~ASTOutputVisitor() = default;
-    ASTOutputVisitor(const ASTOutputVisitor &) = delete;
-    auto operator=(const ASTOutputVisitor &) -> ASTOutputVisitor & = delete;
-    ASTOutputVisitor(ASTOutputVisitor &&) = delete;
-    auto operator=(ASTOutputVisitor &&) -> ASTOutputVisitor & = delete;
-
     auto getResult() const -> std::string
     {
         return m_ss.str();
     }
 
-    void visit(const class U32LiteralNode &node);
-    void visit(const class U64LiteralNode &node);
-    void visit(const class StrLiteralNode &node);
-    void visit(const class BytesLiteralNode &node);
-    void visit(const class TypeEnumNode &node);
-    void visit(const class ModelNode &node);
-    void visit(const class GraphNode &node);
-    void visit(const class NodeListNode &node);
-    void visit(const class InputListNode &node);
-    void visit(const class OutputListNode &node);
-    void visit(const class InitializerListNode &node);
-    void visit(const class NodeNode &node);
-    void visit(const class InputArrNode &node);
-    void visit(const class OutputArrNode &node);
-    void visit(const class AttributeListNode &node);
-    void visit(const class AttributeNode &node);
-    void visit(const class ValueInfoNode &node);
-    void visit(const class TensorTypeNode &node);
-    void visit(const class ShapeNode &node);
-    void visit(const class DimNode &node);
-    void visit(const class TensorNode &node);
-    void visit(const class DimsArrayNode &node);
-    void visit(const class OpsetImportNode &node);
-    void visit(const class ErrorNode &node);
+    void visit(const class U32LiteralNode &node) override;
+    void visit(const class U64LiteralNode &node) override;
+    void visit(const class StrLiteralNode &node) override;
+    void visit(const class BytesLiteralNode &node) override;
+    void visit(const class TypeEnumNode &node) override;
+    void visit(const class ModelNode &node) override;
+    void visit(const class GraphNode &node) override;
+    void visit(const class NodeListNode &node) override;
+    void visit(const class InputListNode &node) override;
+    void visit(const class OutputListNode &node) override;
+    void visit(const class InitializerListNode &node) override;
+    void visit(const class NodeNode &node) override;
+    void visit(const class InputArrNode &node) override;
+    void visit(const class OutputArrNode &node) override;
+    void visit(const class AttributeListNode &node) override;
+    void visit(const class AttributeNode &node) override;
+    void visit(const class ValueInfoNode &node) override;
+    void visit(const class TensorTypeNode &node) override;
+    void visit(const class ShapeNode &node) override;
+    void visit(const class DimNode &node) override;
+    void visit(const class TensorNode &node) override;
+    void visit(const class DimsArrayNode &node) override;
+    void visit(const class OpsetImportNode &node) override;
+    void visit(const class ErrorNode &node) override;
 };
 
 } // namespace sonnx
 
-#endif // VISITOR_HPP
+#endif // AST_OUTPUT_VISITOR_HPP

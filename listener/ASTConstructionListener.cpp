@@ -77,7 +77,6 @@ template <typename CtxType> void ASTConstructionListener::processTypeEnum(CtxTyp
 
 void ASTConstructionListener::visitErrorNode(antlr4::tree::ErrorNode *node)
 {
-
 }
 
 void ASTConstructionListener::exitModel_body_def(antlr_sonnx::S_ONNXParser::Model_body_defContext * /*ctx*/)

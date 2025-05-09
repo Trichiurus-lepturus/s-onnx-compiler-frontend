@@ -9,9 +9,9 @@ set(ANTLR4CPP_EXTERNAL_ROOT ${CMAKE_BINARY_DIR}/externals/antlr4cpp)
 set(ANTLR4CPP_LOCAL_ROOT ${CMAKE_BINARY_DIR}/locals/antlr4cpp)
 
 set(ANTLR4CPP_JAR_LOCATION
-    ${PROJECT_SOURCE_DIR}/third_party/antlr-4.13.2-complete.jar)
+        ${PROJECT_SOURCE_DIR}/third_party/antlr-4.13.2-complete.jar)
 set(ANTLR4CPP_LOCAL_REPO
-    ${PROJECT_SOURCE_DIR}/third_party/antlr4-4.13.2.zip)
+        ${PROJECT_SOURCE_DIR}/third_party/antlr4-4.13.2.zip)
 
 if (NOT EXISTS "${ANTLR4CPP_JAR_LOCATION}")
     message(
@@ -49,16 +49,16 @@ endforeach (src_path)
 
 set(ANTLR4CPP_LIBS "${INSTALL_DIR}/lib64")
 
-macro(antlr4cpp_process_grammar antlr4cpp_project antlr4cpp_project_namespace
+function(antlr4cpp_process_grammar
+        antlr4cpp_project
+        antlr4cpp_project_namespace
         antlr4cpp_grammar)
 
     if (EXISTS "${ANTLR4CPP_JAR_LOCATION}")
         message(STATUS "Found antlr tool: ${ANTLR4CPP_JAR_LOCATION}")
     else ()
-        message(
-                FATAL_ERROR
-                "Unable to find antlr tool. ANTLR4CPP_JAR_LOCATION:${ANTLR4CPP_JAR_LOCATION}"
-        )
+        message(FATAL_ERROR
+                "Unable to find antlr tool. ANTLR4CPP_JAR_LOCATION:${ANTLR4CPP_JAR_LOCATION}")
     endif ()
 
     add_custom_target(
@@ -72,24 +72,19 @@ macro(antlr4cpp_process_grammar antlr4cpp_project antlr4cpp_project_namespace
             WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
             DEPENDS "${antlr4cpp_grammar}")
 
-    file(GLOB generated_files
-            ${ANTLR4CPP_GENERATED_SRC_DIR}/${antlr4cpp_project_namespace}/*.cpp)
+    get_filename_component(grammar_fullname "${antlr4cpp_grammar}" NAME_WE)
+    set(generation_dir "${ANTLR4CPP_GENERATED_SRC_DIR}/${antlr4cpp_project_namespace}")
+    set(expected_sources
+            "${generation_dir}/${grammar_fullname}Lexer.cpp"
+            "${generation_dir}/${grammar_fullname}Parser.cpp"
+            "${generation_dir}/${grammar_fullname}BaseListener.cpp"
+            "${generation_dir}/${grammar_fullname}BaseVisitor.cpp"
+            "${generation_dir}/${grammar_fullname}Listener.cpp"
+            "${generation_dir}/${grammar_fullname}Visitor.cpp")
+    foreach (src IN LISTS expected_sources)
+        set_source_files_properties(${src} PROPERTIES GENERATED TRUE)
+    endforeach ()
+    set(generated_source_files "${expected_sources}" PARENT_SCOPE)
+    set(generated_include_dirs "${generation_dir}" PARENT_SCOPE)
 
-    foreach (generated_file ${generated_files})
-        list(APPEND antlr4cpp_src_files_${antlr4cpp_project_namespace}
-                ${generated_file})
-        set_source_files_properties(
-                ${generated_file} PROPERTIES COMPILE_FLAGS -Wno-overloaded-virtual)
-    endforeach (generated_file)
-    message(
-            STATUS
-            "Antlr4Cpp  ${antlr4cpp_project_namespace} Generated: ${generated_files}")
-
-    set(antlr4cpp_include_dirs_${antlr4cpp_project_namespace}
-            ${ANTLR4CPP_GENERATED_SRC_DIR}/${antlr4cpp_project_namespace})
-    message(
-            STATUS
-            "Antlr4Cpp ${antlr4cpp_project_namespace} include: ${ANTLR4CPP_GENERATED_SRC_DIR}/${antlr4cpp_project_namespace}"
-    )
-
-endmacro()
+endfunction()

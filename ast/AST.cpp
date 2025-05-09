@@ -1,6 +1,6 @@
 #include "AST.hpp"
 
-#include <visitor/Visitor.hpp>
+#include <visitor/ASTBaseVisitor.hpp>
 
 namespace sonnx
 {

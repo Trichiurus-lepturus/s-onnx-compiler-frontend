@@ -1,6 +1,7 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#include "visitor/ASTBaseVisitor.hpp"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -13,7 +14,6 @@ namespace sonnx
 enum class NodeType
 {
     MODEL,
-    GRAPH,
     NODE_LIST,
     INPUT_LIST,
     OUTPUT_LIST,
@@ -23,18 +23,17 @@ enum class NodeType
     OUTPUT_ARR,
     ATTRIBUTE_LIST,
     ATTRIBUTE,
-    VALUE_INFO,
-    TENSOR_TYPE,
-    SHAPE,
-    DIM,
-    TENSOR,
-    OPSET_IMPORT,
+    IO_TENSOR,
+    IO_SHAPE,
+    IO_DIM,
+    INIT_TENSOR,
+    INIT_SHAPE,
     U32_LITERAL,
     U64_LITERAL,
     STR_LITERAL,
     BYTES_LITERAL,
     TYPE_ENUM,
-    ERROR
+    ERROR_NODE
 };
 
 enum class ValueOrDataType
@@ -47,7 +46,10 @@ enum class ValueOrDataType
 
 class ASTNode
 {
-public:
+  private:
+    mutable std::unique_ptr<ASTTag> tag_;
+
+  public:
     ASTNode() = default;
     virtual ~ASTNode() = default;
     ASTNode(const ASTNode &) = delete;
@@ -56,6 +58,10 @@ public:
     auto operator=(ASTNode &&) -> ASTNode & = delete;
     [[nodiscard]] virtual auto getASTNodeType() const -> NodeType = 0;
     virtual void accept(class Visitor &visitor) const = 0;
+    [[nodiscard]] auto getTag() const -> const ASTTag *
+    {
+        return tag_.get();
+    }
 };
 
 class U32LiteralNode final : public ASTNode
@@ -146,7 +152,7 @@ class TypeEnumNode final : public ASTNode
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::BYTES_LITERAL;
+        return NodeType::TYPE_ENUM;
     }
     void accept(Visitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> ValueOrDataType
@@ -162,13 +168,18 @@ class ModelNode final : public ASTNode
 {
   public:
     ModelNode(std::unique_ptr<ASTNode> ir_version, std::unique_ptr<ASTNode> producer_name,
-              std::unique_ptr<ASTNode> producer_version, std::unique_ptr<ASTNode> domain,
+              std::unique_ptr<ASTNode> producer_version, std::unique_ptr<ASTNode> model_domain,
               std::unique_ptr<ASTNode> model_version, std::unique_ptr<ASTNode> doc_string,
-              std::unique_ptr<ASTNode> graph, std::unique_ptr<ASTNode> opset_import)
+              std::unique_ptr<ASTNode> graph_name, std::unique_ptr<ASTNode> node_list,
+              std::unique_ptr<ASTNode> input_list, std::unique_ptr<ASTNode> output_list,
+              std::unique_ptr<ASTNode> initializer_list, std::unique_ptr<ASTNode> opset_domain,
+              std::unique_ptr<ASTNode> opset_version)
         : ir_version_(std::move(ir_version)), producer_name_(std::move(producer_name)),
-          producer_version_(std::move(producer_version)), domain_(std::move(domain)),
-          model_version_(std::move(model_version)), doc_string_(std::move(doc_string)), graph_(std::move(graph)),
-          opset_import_(std::move(opset_import))
+          producer_version_(std::move(producer_version)), model_domain_(std::move(model_domain)),
+          model_version_(std::move(model_version)), doc_string_(std::move(doc_string)),
+          graph_name_(std::move(graph_name)), node_list_(std::move(node_list)), input_list_(std::move(input_list)),
+          output_list_(std::move(output_list)), initializer_list_(std::move(initializer_list)),
+          opset_domain_(std::move(opset_domain)), opset_version_(std::move(opset_version))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -191,7 +202,7 @@ class ModelNode final : public ASTNode
     }
     [[nodiscard]] auto getDomain() const -> const ASTNode *
     {
-        return domain_.get();
+        return model_domain_.get();
     }
     [[nodiscard]] auto getModelVersion() const -> const ASTNode *
     {
@@ -201,44 +212,9 @@ class ModelNode final : public ASTNode
     {
         return doc_string_.get();
     }
-    [[nodiscard]] auto getGraph() const -> const ASTNode *
+    [[nodiscard]] auto getGraphName() const -> const ASTNode *
     {
-        return graph_.get();
-    }
-    [[nodiscard]] auto getOpsetImport() const -> const ASTNode *
-    {
-        return opset_import_.get();
-    }
-
-  private:
-    std::unique_ptr<ASTNode> ir_version_;
-    std::unique_ptr<ASTNode> producer_name_;
-    std::unique_ptr<ASTNode> producer_version_;
-    std::unique_ptr<ASTNode> domain_;
-    std::unique_ptr<ASTNode> model_version_;
-    std::unique_ptr<ASTNode> doc_string_;
-    std::unique_ptr<ASTNode> graph_;
-    std::unique_ptr<ASTNode> opset_import_;
-};
-
-class GraphNode final : public ASTNode
-{
-  public:
-    GraphNode(std::unique_ptr<ASTNode> name, std::unique_ptr<ASTNode> node_list, std::unique_ptr<ASTNode> input_list,
-              std::unique_ptr<ASTNode> output_list, std::unique_ptr<ASTNode> initializer_list = nullptr)
-        : name_(std::move(name)), node_list_(std::move(node_list)), input_list_(std::move(input_list)),
-          output_list_(std::move(output_list)), initializer_list_(std::move(initializer_list))
-    {
-    }
-    [[nodiscard]] auto getASTNodeType() const -> NodeType override
-    {
-        return NodeType::GRAPH;
-    }
-    void accept(Visitor &visitor) const override;
-
-    [[nodiscard]] auto getName() const -> const ASTNode *
-    {
-        return name_.get();
+        return graph_name_.get();
     }
     [[nodiscard]] auto getNodeList() const -> const ASTNode *
     {
@@ -256,19 +232,35 @@ class GraphNode final : public ASTNode
     {
         return initializer_list_.get();
     }
+    [[nodiscard]] auto getOpsetDomain() const -> const ASTNode *
+    {
+        return opset_domain_.get();
+    }
+    [[nodiscard]] auto getOpsetVersion() const -> const ASTNode *
+    {
+        return opset_version_.get();
+    }
 
   private:
-    std::unique_ptr<ASTNode> name_;
+    std::unique_ptr<ASTNode> ir_version_;
+    std::unique_ptr<ASTNode> producer_name_;
+    std::unique_ptr<ASTNode> producer_version_;
+    std::unique_ptr<ASTNode> model_domain_;
+    std::unique_ptr<ASTNode> model_version_;
+    std::unique_ptr<ASTNode> doc_string_;
+    std::unique_ptr<ASTNode> graph_name_;
     std::unique_ptr<ASTNode> node_list_;
     std::unique_ptr<ASTNode> input_list_;
     std::unique_ptr<ASTNode> output_list_;
     std::unique_ptr<ASTNode> initializer_list_;
+    std::unique_ptr<ASTNode> opset_domain_;
+    std::unique_ptr<ASTNode> opset_version_;
 };
 
 class NodeListNode final : public ASTNode
 {
   public:
-    NodeListNode(std::vector<std::unique_ptr<ASTNode>> nodes) : nodes_(std::move(nodes))
+    explicit NodeListNode(std::vector<std::unique_ptr<ASTNode>> nodes) : nodes_(std::move(nodes))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -288,7 +280,7 @@ class NodeListNode final : public ASTNode
 class InputListNode final : public ASTNode
 {
   public:
-    InputListNode(std::vector<std::unique_ptr<ASTNode>> inputs) : inputs_(std::move(inputs))
+    explicit InputListNode(std::vector<std::unique_ptr<ASTNode>> io_tensors) : io_tensors_(std::move(io_tensors))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -296,19 +288,19 @@ class InputListNode final : public ASTNode
         return NodeType::INPUT_LIST;
     }
     void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getInputs() const -> const std::vector<std::unique_ptr<ASTNode>> &
+    [[nodiscard]] auto getIOTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
-        return inputs_;
+        return io_tensors_;
     }
 
   private:
-    std::vector<std::unique_ptr<ASTNode>> inputs_;
+    std::vector<std::unique_ptr<ASTNode>> io_tensors_;
 };
 
 class OutputListNode final : public ASTNode
 {
   public:
-    OutputListNode(std::vector<std::unique_ptr<ASTNode>> outputs) : outputs_(std::move(outputs))
+    explicit OutputListNode(std::vector<std::unique_ptr<ASTNode>> io_tensors) : io_tensors_(std::move(io_tensors))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -316,19 +308,20 @@ class OutputListNode final : public ASTNode
         return NodeType::OUTPUT_LIST;
     }
     void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getOutputs() const -> const std::vector<std::unique_ptr<ASTNode>> &
+    [[nodiscard]] auto getIOTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
-        return outputs_;
+        return io_tensors_;
     }
 
   private:
-    std::vector<std::unique_ptr<ASTNode>> outputs_;
+    std::vector<std::unique_ptr<ASTNode>> io_tensors_;
 };
 
 class InitializerListNode final : public ASTNode
 {
   public:
-    InitializerListNode(std::vector<std::unique_ptr<ASTNode>> initializers) : initializers_(std::move(initializers))
+    explicit InitializerListNode(std::vector<std::unique_ptr<ASTNode>> init_tensors)
+        : init_tensors_(std::move(init_tensors))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -336,23 +329,23 @@ class InitializerListNode final : public ASTNode
         return NodeType::INITIALIZER_LIST;
     }
     void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getInitializers() const -> const std::vector<std::unique_ptr<ASTNode>> &
+    [[nodiscard]] auto getInitTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
-        return initializers_;
+        return init_tensors_;
     }
 
   private:
-    std::vector<std::unique_ptr<ASTNode>> initializers_;
+    std::vector<std::unique_ptr<ASTNode>> init_tensors_;
 };
 
 class NodeNode final : public ASTNode
 {
   public:
     NodeNode(std::unique_ptr<ASTNode> op_type, std::unique_ptr<ASTNode> name,
-             std::unique_ptr<ASTNode> input_list_or_array, std::unique_ptr<ASTNode> output_list_or_array_,
-             std::unique_ptr<ASTNode> attribute_list = nullptr)
+             std::unique_ptr<ASTNode> input_list_or_array, std::unique_ptr<ASTNode> output_list_or_array,
+             std::unique_ptr<ASTNode> attribute_list)
         : op_type_(std::move(op_type)), name_(std::move(name)), input_list_or_array_(std::move(input_list_or_array)),
-          output_list_or_array_(std::move(output_list_or_array_)), attribute_list_(std::move(attribute_list))
+          output_list_or_array_(std::move(output_list_or_array)), attribute_list_(std::move(attribute_list))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -369,11 +362,11 @@ class NodeNode final : public ASTNode
     {
         return name_.get();
     }
-    [[nodiscard]] auto getInputs() const -> const ASTNode *
+    [[nodiscard]] auto getInputListOrArray() const -> const ASTNode *
     {
         return input_list_or_array_.get();
     }
-    [[nodiscard]] auto getOutputs() const -> const ASTNode *
+    [[nodiscard]] auto getOutputListOrArray() const -> const ASTNode *
     {
         return output_list_or_array_.get();
     }
@@ -393,7 +386,8 @@ class NodeNode final : public ASTNode
 class InputArrNode final : public ASTNode
 {
   public:
-    InputArrNode(std::vector<std::unique_ptr<ASTNode>> input_elements) : input_elements_(std::move(input_elements))
+    explicit InputArrNode(std::vector<std::unique_ptr<ASTNode>> input_elements)
+        : input_elements_(std::move(input_elements))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -413,7 +407,8 @@ class InputArrNode final : public ASTNode
 class OutputArrNode final : public ASTNode
 {
   public:
-    OutputArrNode(std::vector<std::unique_ptr<ASTNode>> output_elements) : output_elements_(std::move(output_elements))
+    explicit OutputArrNode(std::vector<std::unique_ptr<ASTNode>> output_elements)
+        : output_elements_(std::move(output_elements))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -433,7 +428,7 @@ class OutputArrNode final : public ASTNode
 class AttributeListNode final : public ASTNode
 {
   public:
-    AttributeListNode(std::vector<std::unique_ptr<ASTNode>> attributes) : attributes_(std::move(attributes))
+    explicit AttributeListNode(std::vector<std::unique_ptr<ASTNode>> attributes) : attributes_(std::move(attributes))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -477,16 +472,16 @@ class AttributeNode final : public ASTNode
     std::unique_ptr<ASTNode> value_;
 };
 
-class ValueInfoNode final : public ASTNode
+class IOTensorNode final : public ASTNode
 {
   public:
-    ValueInfoNode(std::unique_ptr<ASTNode> name, std::unique_ptr<ASTNode> tensor_type)
-        : name_(std::move(name)), tensor_type_(std::move(tensor_type))
+    IOTensorNode(std::unique_ptr<ASTNode> name, std::unique_ptr<ASTNode> type, std::unique_ptr<ASTNode> io_shape)
+        : name_(std::move(name)), type_(std::move(type)), io_shape_(std::move(io_shape))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::VALUE_INFO;
+        return NodeType::IO_TENSOR;
     }
     void accept(Visitor &visitor) const override;
 
@@ -494,72 +489,50 @@ class ValueInfoNode final : public ASTNode
     {
         return name_.get();
     }
-    [[nodiscard]] auto getTensorType() const -> const ASTNode *
+    [[nodiscard]] auto getType() const -> const ASTNode *
     {
-        return tensor_type_.get();
+        return type_.get();
+    }
+    [[nodiscard]] auto getIOShape() const -> const ASTNode *
+    {
+        return io_shape_.get();
     }
 
   private:
     std::unique_ptr<ASTNode> name_;
-    std::unique_ptr<ASTNode> tensor_type_;
+    std::unique_ptr<ASTNode> type_;
+    std::unique_ptr<ASTNode> io_shape_;
 };
 
-class TensorTypeNode final : public ASTNode
+class IOShapeNode final : public ASTNode
 {
   public:
-    TensorTypeNode(std::unique_ptr<ASTNode> elem_type, std::unique_ptr<ASTNode> shape)
-        : elem_type_(std::move(elem_type)), shape_(std::move(shape))
+    explicit IOShapeNode(std::vector<std::unique_ptr<ASTNode>> io_dims) : io_dims_(std::move(io_dims))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::TENSOR_TYPE;
+        return NodeType::IO_SHAPE;
     }
     void accept(Visitor &visitor) const override;
-
-    [[nodiscard]] auto getElemType() const -> const ASTNode *
+    [[nodiscard]] auto getIODims() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
-        return elem_type_.get();
-    }
-    [[nodiscard]] auto getShape() const -> const ASTNode *
-    {
-        return shape_.get();
+        return io_dims_;
     }
 
   private:
-    std::unique_ptr<ASTNode> elem_type_;
-    std::unique_ptr<ASTNode> shape_;
+    std::vector<std::unique_ptr<ASTNode>> io_dims_;
 };
 
-class ShapeNode final : public ASTNode
+class IODimNode final : public ASTNode
 {
   public:
-    ShapeNode(std::vector<std::unique_ptr<ASTNode>> dim_elements) : dim_elements_(std::move(dim_elements))
+    explicit IODimNode(std::unique_ptr<ASTNode> value_or_param) : value_or_param_(std::move(value_or_param))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::SHAPE;
-    }
-    void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getDimElements() const -> const std::vector<std::unique_ptr<ASTNode>> &
-    {
-        return dim_elements_;
-    }
-
-  private:
-    std::vector<std::unique_ptr<ASTNode>> dim_elements_;
-};
-
-class DimNode final : public ASTNode
-{
-  public:
-    explicit DimNode(std::unique_ptr<ASTNode> value_or_param) : value_or_param_(std::move(value_or_param))
-    {
-    }
-    [[nodiscard]] auto getASTNodeType() const -> NodeType override
-    {
-        return NodeType::DIM;
+        return NodeType::IO_DIM;
     }
     void accept(Visitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> const ASTNode *
@@ -571,18 +544,18 @@ class DimNode final : public ASTNode
     std::unique_ptr<ASTNode> value_or_param_;
 };
 
-class TensorNode final : public ASTNode
+class InitTensorNode final : public ASTNode
 {
   public:
-    TensorNode(std::unique_ptr<ASTNode> name, std::unique_ptr<ASTNode> data_type, std::unique_ptr<ASTNode> dims_array,
-               std::unique_ptr<ASTNode> raw_data)
-        : name_(std::move(name)), data_type_(std::move(data_type)), dims_array_(std::move(dims_array)),
+    InitTensorNode(std::unique_ptr<ASTNode> name, std::unique_ptr<ASTNode> type, std::unique_ptr<ASTNode> init_shape,
+                   std::unique_ptr<ASTNode> raw_data)
+        : name_(std::move(name)), type_(std::move(type)), init_shape_(std::move(init_shape)),
           raw_data_(std::move(raw_data))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::TENSOR;
+        return NodeType::INIT_TENSOR;
     }
     void accept(Visitor &visitor) const override;
 
@@ -590,13 +563,13 @@ class TensorNode final : public ASTNode
     {
         return name_.get();
     }
-    [[nodiscard]] auto getDataType() const -> const ASTNode *
+    [[nodiscard]] auto getType() const -> const ASTNode *
     {
-        return data_type_.get();
+        return type_.get();
     }
-    [[nodiscard]] auto getDimsArray() const -> const ASTNode *
+    [[nodiscard]] auto getInitShape() const -> const ASTNode *
     {
-        return dims_array_.get();
+        return init_shape_.get();
     }
     [[nodiscard]] auto getRawData() const -> const ASTNode *
     {
@@ -605,56 +578,29 @@ class TensorNode final : public ASTNode
 
   private:
     std::unique_ptr<ASTNode> name_;
-    std::unique_ptr<ASTNode> data_type_;
-    std::unique_ptr<ASTNode> dims_array_;
+    std::unique_ptr<ASTNode> type_;
+    std::unique_ptr<ASTNode> init_shape_;
     std::unique_ptr<ASTNode> raw_data_;
 };
 
-class DimsArrayNode final : public ASTNode
+class InitShapeNode final : public ASTNode
 {
   public:
-    DimsArrayNode(std::vector<std::unique_ptr<ASTNode>> dims_elements) : dims_elements_(std::move(dims_elements))
+    explicit InitShapeNode(std::vector<std::unique_ptr<ASTNode>> dim_values) : dim_values_(std::move(dim_values))
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::DIM;
+        return NodeType::INIT_SHAPE;
     }
     void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getDimsElements() const -> const std::vector<std::unique_ptr<ASTNode>> &
+    [[nodiscard]] auto getDimValues() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
-        return dims_elements_;
+        return dim_values_;
     }
 
   private:
-    std::vector<std::unique_ptr<ASTNode>> dims_elements_;
-};
-
-class OpsetImportNode final : public ASTNode
-{
-  public:
-    OpsetImportNode(std::unique_ptr<ASTNode> domain, std::unique_ptr<ASTNode> version)
-        : domain_(std::move(domain)), version_(std::move(version))
-    {
-    }
-    [[nodiscard]] auto getASTNodeType() const -> NodeType override
-    {
-        return NodeType::OPSET_IMPORT;
-    }
-    void accept(Visitor &visitor) const override;
-
-    [[nodiscard]] auto getDomain() const -> const ASTNode *
-    {
-        return domain_.get();
-    }
-    [[nodiscard]] auto getVersion() const -> const ASTNode *
-    {
-        return version_.get();
-    }
-
-  private:
-    std::unique_ptr<ASTNode> domain_;
-    std::unique_ptr<ASTNode> version_;
+    std::vector<std::unique_ptr<ASTNode>> dim_values_;
 };
 
 class ErrorNode final : public ASTNode
@@ -662,7 +608,7 @@ class ErrorNode final : public ASTNode
   public:
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
     {
-        return NodeType::ERROR;
+        return NodeType::ERROR_NODE;
     }
     void accept(Visitor &visitor) const override;
 };

@@ -29,10 +29,6 @@ void ModelNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void GraphNode::accept(Visitor &visitor) const
-{
-    visitor.visit(*this);
-}
 void NodeListNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
@@ -69,31 +65,23 @@ void AttributeNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void ValueInfoNode::accept(Visitor &visitor) const
+void IOTensorNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void TensorTypeNode::accept(Visitor &visitor) const
+void IOShapeNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void ShapeNode::accept(Visitor &visitor) const
+void IODimNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void DimNode::accept(Visitor &visitor) const
+void InitTensorNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }
-void TensorNode::accept(Visitor &visitor) const
-{
-    visitor.visit(*this);
-}
-void DimsArrayNode::accept(Visitor &visitor) const
-{
-    visitor.visit(*this);
-}
-void OpsetImportNode::accept(Visitor &visitor) const
+void InitShapeNode::accept(Visitor &visitor) const
 {
     visitor.visit(*this);
 }

@@ -1,7 +1,10 @@
 #include "ASTSemanticVisitor.hpp"
 
+#include <ast/AST.hpp>
+
 namespace sonnx
 {
+
 void ASTSemanticVisitor::visit(const U32LiteralNode &node)
 {
 }
@@ -23,10 +26,6 @@ void ASTSemanticVisitor::visit(const TypeEnumNode &node)
 }
 
 void ASTSemanticVisitor::visit(const ModelNode &node)
-{
-}
-
-void ASTSemanticVisitor::visit(const GraphNode &node)
 {
 }
 
@@ -66,31 +65,23 @@ void ASTSemanticVisitor::visit(const AttributeNode &node)
 {
 }
 
-void ASTSemanticVisitor::visit(const ValueInfoNode &node)
+void ASTSemanticVisitor::visit(const IOTensorNode &node)
 {
 }
 
-void ASTSemanticVisitor::visit(const TensorTypeNode &node)
+void ASTSemanticVisitor::visit(const IOShapeNode &node)
 {
 }
 
-void ASTSemanticVisitor::visit(const ShapeNode &node)
+void ASTSemanticVisitor::visit(const IODimNode &node)
 {
 }
 
-void ASTSemanticVisitor::visit(const DimNode &node)
+void ASTSemanticVisitor::visit(const InitTensorNode &node)
 {
 }
 
-void ASTSemanticVisitor::visit(const TensorNode &node)
-{
-}
-
-void ASTSemanticVisitor::visit(const DimsArrayNode &node)
-{
-}
-
-void ASTSemanticVisitor::visit(const OpsetImportNode &node)
+void ASTSemanticVisitor::visit(const InitShapeNode &node)
 {
 }
 

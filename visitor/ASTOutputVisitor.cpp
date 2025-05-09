@@ -5,7 +5,8 @@
 
 namespace sonnx
 {
-auto valueOrDataTypeToString(sonnx::ValueOrDataType type) -> std::string
+
+auto valueOrDataTypeToString(const ValueOrDataType type) -> std::string
 {
     switch (type)
     {
@@ -21,10 +22,62 @@ auto valueOrDataTypeToString(sonnx::ValueOrDataType type) -> std::string
         return "UNKNOWN";
     }
 }
+
+auto nodeTypeToString(const NodeType type) -> std::string
+{
+    switch (type)
+    {
+    case NodeType::MODEL:
+        return "MODEL";
+    case NodeType::NODE_LIST:
+        return "NODE_LIST";
+    case NodeType::INPUT_LIST:
+        return "INPUT_LIST";
+    case NodeType::OUTPUT_LIST:
+        return "OUTPUT_LIST";
+    case NodeType::INITIALIZER_LIST:
+        return "INITIALIZER_LIST";
+    case NodeType::NODE:
+        return "NODE";
+    case NodeType::INPUT_ARR:
+        return "INPUT_ARR";
+    case NodeType::OUTPUT_ARR:
+        return "OUTPUT_ARR";
+    case NodeType::ATTRIBUTE_LIST:
+        return "ATTRIBUTE_LIST";
+    case NodeType::ATTRIBUTE:
+        return "ATTRIBUTE";
+    case NodeType::IO_TENSOR:
+        return "IO_TENSOR";
+    case NodeType::IO_SHAPE:
+        return "IO_SHAPE";
+    case NodeType::IO_DIM:
+        return "IO_DIM";
+    case NodeType::INIT_TENSOR:
+        return "INIT_TENSOR";
+    case NodeType::INIT_SHAPE:
+        return "INIT_SHAPE";
+    case NodeType::U32_LITERAL:
+        return "U32_LITERAL";
+    case NodeType::U64_LITERAL:
+        return "U64_LITERAL";
+    case NodeType::STR_LITERAL:
+        return "STR_LITERAL";
+    case NodeType::BYTES_LITERAL:
+        return "BYTES_LITERAL";
+    case NodeType::TYPE_ENUM:
+        return "TYPE_ENUM";
+    case NodeType::ERROR_NODE:
+        return "ERROR_NODE";
+    default:
+        return "UNKNOWN";
+    }
+}
+
 void ASTOutputVisitor::visit(const ModelNode &node)
 {
     addIndent();
-    m_ss << "(MODEL\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getIrVersion() != nullptr)
     {
@@ -50,27 +103,9 @@ void ASTOutputVisitor::visit(const ModelNode &node)
     {
         node.getDocString()->accept(*this);
     }
-    if (node.getGraph() != nullptr)
+    if (node.getGraphName() != nullptr)
     {
-        node.getGraph()->accept(*this);
-    }
-    if (node.getOpsetImport() != nullptr)
-    {
-        node.getOpsetImport()->accept(*this);
-    }
-    --m_indent_level;
-    addIndent();
-    m_ss << ")\n";
-}
-
-void ASTOutputVisitor::visit(const GraphNode &node)
-{
-    addIndent();
-    m_ss << "(GRAPH\n";
-    ++m_indent_level;
-    if (node.getName() != nullptr)
-    {
-        node.getName()->accept(*this);
+        node.getGraphName()->accept(*this);
     }
     if (node.getNodeList() != nullptr)
     {
@@ -88,6 +123,14 @@ void ASTOutputVisitor::visit(const GraphNode &node)
     {
         node.getInitializerList()->accept(*this);
     }
+    if (node.getOpsetDomain() != nullptr)
+    {
+        node.getOpsetDomain()->accept(*this);
+    }
+    if (node.getOpsetVersion() != nullptr)
+    {
+        node.getOpsetVersion()->accept(*this);
+    }
     --m_indent_level;
     addIndent();
     m_ss << ")\n";
@@ -96,11 +139,11 @@ void ASTOutputVisitor::visit(const GraphNode &node)
 void ASTOutputVisitor::visit(const NodeListNode &node)
 {
     addIndent();
-    m_ss << "(NODE_LIST\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
-    for (const auto &node : node.getNodes())
+    for (const auto &node_in_list : node.getNodes())
     {
-        node->accept(*this);
+        node_in_list->accept(*this);
     }
     --m_indent_level;
     addIndent();
@@ -110,9 +153,9 @@ void ASTOutputVisitor::visit(const NodeListNode &node)
 void ASTOutputVisitor::visit(const InputListNode &node)
 {
     addIndent();
-    m_ss << "(INPUT_LIST\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
-    for (const auto &input : node.getInputs())
+    for (const auto &input : node.getIOTensors())
     {
         input->accept(*this);
     }
@@ -124,9 +167,9 @@ void ASTOutputVisitor::visit(const InputListNode &node)
 void ASTOutputVisitor::visit(const OutputListNode &node)
 {
     addIndent();
-    m_ss << "(OUTPUT_LIST\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
-    for (const auto &output : node.getOutputs())
+    for (const auto &output : node.getIOTensors())
     {
         output->accept(*this);
     }
@@ -138,9 +181,9 @@ void ASTOutputVisitor::visit(const OutputListNode &node)
 void ASTOutputVisitor::visit(const InitializerListNode &node)
 {
     addIndent();
-    m_ss << "(INITIALIZER_LIST\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
-    for (const auto &initializer : node.getInitializers())
+    for (const auto &initializer : node.getInitTensors())
     {
         initializer->accept(*this);
     }
@@ -152,7 +195,7 @@ void ASTOutputVisitor::visit(const InitializerListNode &node)
 void ASTOutputVisitor::visit(const NodeNode &node)
 {
     addIndent();
-    m_ss << "(NODE\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getOpType() != nullptr)
     {
@@ -162,13 +205,13 @@ void ASTOutputVisitor::visit(const NodeNode &node)
     {
         node.getName()->accept(*this);
     }
-    if (node.getInputs() != nullptr)
+    if (node.getInputListOrArray() != nullptr)
     {
-        node.getInputs()->accept(*this);
+        node.getInputListOrArray()->accept(*this);
     }
-    if (node.getOutputs() != nullptr)
+    if (node.getOutputListOrArray() != nullptr)
     {
-        node.getOutputs()->accept(*this);
+        node.getOutputListOrArray()->accept(*this);
     }
     if (node.getAttributeList() != nullptr)
     {
@@ -182,7 +225,7 @@ void ASTOutputVisitor::visit(const NodeNode &node)
 void ASTOutputVisitor::visit(const InputArrNode &node)
 {
     addIndent();
-    m_ss << "(INPUT_ARR\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     for (const auto &elem : node.getInputElements())
     {
@@ -196,7 +239,7 @@ void ASTOutputVisitor::visit(const InputArrNode &node)
 void ASTOutputVisitor::visit(const OutputArrNode &node)
 {
     addIndent();
-    m_ss << "(OUTPUT_ARR\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     for (const auto &elem : node.getOutputElements())
     {
@@ -210,7 +253,7 @@ void ASTOutputVisitor::visit(const OutputArrNode &node)
 void ASTOutputVisitor::visit(const AttributeListNode &node)
 {
     addIndent();
-    m_ss << "(ATTRIBUTE_LIST\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     for (const auto &attr : node.getAttributes())
     {
@@ -224,7 +267,7 @@ void ASTOutputVisitor::visit(const AttributeListNode &node)
 void ASTOutputVisitor::visit(const AttributeNode &node)
 {
     addIndent();
-    m_ss << "(ATTRIBUTE\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getName() != nullptr)
     {
@@ -239,60 +282,46 @@ void ASTOutputVisitor::visit(const AttributeNode &node)
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const ValueInfoNode &node)
+void ASTOutputVisitor::visit(const IOTensorNode &node)
 {
     addIndent();
-    m_ss << "(VALUE_INFO\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
     }
-    if (node.getTensorType() != nullptr)
+    if (node.getType() != nullptr)
     {
-        node.getTensorType()->accept(*this);
+        node.getType()->accept(*this);
+    }
+    if (node.getIOShape() != nullptr)
+    {
+        node.getIOShape()->accept(*this);
     }
     --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const TensorTypeNode &node)
+void ASTOutputVisitor::visit(const IOShapeNode &node)
 {
     addIndent();
-    m_ss << "(TENSOR_TYPE\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
-    if (node.getElemType() != nullptr)
+    for (const auto &elem : node.getIODims())
     {
-        node.getElemType()->accept(*this);
-    }
-    if (node.getShape() != nullptr)
-    {
-        node.getShape()->accept(*this);
+        elem->accept(*this);
     }
     --m_indent_level;
     addIndent();
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const ShapeNode &node)
+void ASTOutputVisitor::visit(const IODimNode &node)
 {
     addIndent();
-    m_ss << "(SHAPE\n";
-    ++m_indent_level;
-    for (const auto &dim : node.getDimElements())
-    {
-        dim->accept(*this);
-    }
-    --m_indent_level;
-    addIndent();
-    m_ss << ")\n";
-}
-
-void ASTOutputVisitor::visit(const DimNode &node)
-{
-    addIndent();
-    m_ss << "(DIM\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getValue() != nullptr)
     {
@@ -303,22 +332,22 @@ void ASTOutputVisitor::visit(const DimNode &node)
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const TensorNode &node)
+void ASTOutputVisitor::visit(const InitTensorNode &node)
 {
     addIndent();
-    m_ss << "(TENSOR\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
     ++m_indent_level;
     if (node.getName() != nullptr)
     {
         node.getName()->accept(*this);
     }
-    if (node.getDataType() != nullptr)
+    if (node.getType() != nullptr)
     {
-        node.getDataType()->accept(*this);
+        node.getType()->accept(*this);
     }
-    if (node.getDimsArray() != nullptr)
+    if (node.getInitShape() != nullptr)
     {
-        node.getDimsArray()->accept(*this);
+        node.getInitShape()->accept(*this);
     }
     if (node.getRawData() != nullptr)
     {
@@ -329,61 +358,32 @@ void ASTOutputVisitor::visit(const TensorNode &node)
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const DimsArrayNode &node)
+void ASTOutputVisitor::visit(const InitShapeNode &node)
 {
-    addIndent();
-    m_ss << "(DIM\n"; // Using DIM as per getASTNodeType() implementation
-    ++m_indent_level;
-    for (const auto &dim : node.getDimsElements())
-    {
-        dim->accept(*this);
-    }
-    --m_indent_level;
-    addIndent();
-    m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const OpsetImportNode &node)
-{
-    addIndent();
-    m_ss << "(OPSET_IMPORT\n";
-    ++m_indent_level;
-    if (node.getDomain() != nullptr)
-    {
-        node.getDomain()->accept(*this);
-    }
-    if (node.getVersion() != nullptr)
-    {
-        node.getVersion()->accept(*this);
-    }
-    --m_indent_level;
-    addIndent();
-    m_ss << ")\n";
-}
-
-// Terminal nodes with values
 void ASTOutputVisitor::visit(const U32LiteralNode &node)
 {
     addIndent();
-    m_ss << "(U32_LITERAL " << node.getValue() << ")\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " " << node.getValue() << ")\n";
 }
 
 void ASTOutputVisitor::visit(const U64LiteralNode &node)
 {
     addIndent();
-    m_ss << "(U64_LITERAL " << node.getValue() << ")\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " " << node.getValue() << ")\n";
 }
 
 void ASTOutputVisitor::visit(const StrLiteralNode &node)
 {
     addIndent();
-    m_ss << "(STR_LITERAL \"" << node.getValue() << "\")\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " \"" << node.getValue() << "\")\n";
 }
 
 void ASTOutputVisitor::visit(const BytesLiteralNode &node)
 {
     addIndent();
-    m_ss << "(BYTES_LITERAL [";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " [";
     const auto &bytes = node.getValue();
     for (size_t i = 0; i < bytes.size(); ++i)
     {
@@ -399,26 +399,13 @@ void ASTOutputVisitor::visit(const BytesLiteralNode &node)
 void ASTOutputVisitor::visit(const TypeEnumNode &node)
 {
     addIndent();
-    // Note: TypeEnumNode's getASTNodeType() returns BYTES_LITERAL, but we print TYPE_ENUM
-    m_ss << "(TYPE_ENUM " << valueOrDataTypeToString(node.getValue()) << ")\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " " << valueOrDataTypeToString(node.getValue()) << ")\n";
 }
 
-void ASTOutputVisitor::visit(const ErrorNode & /*node*/)
+void ASTOutputVisitor::visit(const ErrorNode &node)
 {
     addIndent();
-    m_ss << "(ERROR)\n";
-}
-
-// Function to traverse the AST and return the resulting string
-auto traverseAST(ASTNode *root) -> std::string
-{
-    if (root == nullptr)
-    {
-        return "";
-    }
-    ASTOutputVisitor visitor;
-    root->accept(visitor);
-    return visitor.getResult();
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << ")\n";
 }
 
 } // namespace sonnx

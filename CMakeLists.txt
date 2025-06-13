@@ -37,7 +37,9 @@ add_executable(sonnxc
         utils/Literal2Cpp.cpp
         visitor/ASTBaseVisitor.cpp
         visitor/ASTOutputVisitor.cpp
-        visitor/ASTSemanticVisitor.cpp)
+        visitor/ASTSemanticVisitor.cpp
+        utils/SymbolTable.cpp
+        utils/SymbolTable.hpp)
 add_dependencies(sonnxc
         antlr4cpp
         antlr4cpp_generation_${PROJECT_NAMESPACE})

@@ -50,22 +50,22 @@ template <typename CtxType> void ASTConstructionListener::processString(CtxType 
 
 template <typename CtxType> void ASTConstructionListener::processTypeEnum(CtxType ctx)
 {
-    ValueOrDataType type{};
+    DataType type{};
     if (ctx->INT() != nullptr)
     {
-        type = ValueOrDataType::INT;
+        type = DataType::INT;
     }
     else if (ctx->FLOAT() != nullptr)
     {
-        type = ValueOrDataType::FLOAT;
+        type = DataType::FLOAT;
     }
     else if (ctx->STRING() != nullptr)
     {
-        type = ValueOrDataType::STRING;
+        type = DataType::STRING;
     }
     else if (ctx->BOOL() != nullptr)
     {
-        type = ValueOrDataType::BOOL;
+        type = DataType::BOOL;
     }
     else
     {

@@ -6,17 +6,17 @@
 namespace sonnx
 {
 
-auto valueOrDataTypeToString(const ValueOrDataType type) -> std::string
+auto DataTypeToString(const DataType type) -> std::string
 {
     switch (type)
     {
-    case ValueOrDataType::INT:
+    case DataType::INT:
         return "INT";
-    case ValueOrDataType::FLOAT:
+    case DataType::FLOAT:
         return "FLOAT";
-    case ValueOrDataType::STRING:
+    case DataType::STRING:
         return "STRING";
-    case ValueOrDataType::BOOL:
+    case DataType::BOOL:
         return "BOOL";
     default:
         return "UNKNOWN";
@@ -399,7 +399,7 @@ void ASTOutputVisitor::visit(const BytesLiteralNode &node)
 void ASTOutputVisitor::visit(const TypeEnumNode &node)
 {
     addIndent();
-    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " " << valueOrDataTypeToString(node.getValue()) << ")\n";
+    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << " " << DataTypeToString(node.getValue()) << ")\n";
 }
 
 void ASTOutputVisitor::visit(const ErrorNode &node)

@@ -36,19 +36,17 @@ enum class NodeType
     ERROR_NODE
 };
 
-enum class ValueOrDataType
+enum class DataType
 {
     INT,
     FLOAT,
     STRING,
-    BOOL
+    BOOL,
+    UNDEFINED
 };
 
 class ASTNode
 {
-  private:
-    mutable std::unique_ptr<ASTTag> tag_;
-
   public:
     ASTNode() = default;
     virtual ~ASTNode() = default;
@@ -58,10 +56,6 @@ class ASTNode
     auto operator=(ASTNode &&) -> ASTNode & = delete;
     [[nodiscard]] virtual auto getASTNodeType() const -> NodeType = 0;
     virtual void accept(class Visitor &visitor) const = 0;
-    [[nodiscard]] auto getTag() const -> const ASTTag *
-    {
-        return tag_.get();
-    }
 };
 
 class U32LiteralNode final : public ASTNode
@@ -147,7 +141,7 @@ class BytesLiteralNode final : public ASTNode
 class TypeEnumNode final : public ASTNode
 {
   public:
-    explicit TypeEnumNode(ValueOrDataType type) : value_(type)
+    explicit TypeEnumNode(DataType type) : value_(type)
     {
     }
     [[nodiscard]] auto getASTNodeType() const -> NodeType override
@@ -155,13 +149,13 @@ class TypeEnumNode final : public ASTNode
         return NodeType::TYPE_ENUM;
     }
     void accept(Visitor &visitor) const override;
-    [[nodiscard]] auto getValue() const -> ValueOrDataType
+    [[nodiscard]] auto getValue() const -> DataType
     {
         return value_;
     }
 
   private:
-    ValueOrDataType value_;
+    DataType value_;
 };
 
 class ModelNode final : public ASTNode

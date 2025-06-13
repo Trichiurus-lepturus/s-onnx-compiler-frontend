@@ -1,35 +1,29 @@
-model -> Ir_version(int), Producer_name(str), Producer_version(str), Domain(str), Model_version(int), Doc_string(str), graph, opset_import
+model -> Ir_version(ir_version_def, int), Producer_name(producer_name_def, str), Producer_version(producer_version_def, str), Model_domain(domain_def, str), Model_version(model_version_def, int), Doc_string(doc_string_def, str), Graph_name(name_def, str), node_list, input_list, output_list, initializer_list?, Opset_domain(domain_def, str), Opset_version(version_def, int)
 
-graph -> Name(str), node_list, input_list, output_list, initializer_list?
+node_list -> node(node_def)+
 
-node_list -> node+
+input_list -> io_tensor(value_info_def)+
 
-input_list -> value_info+
+output_list -> io_tensor(value_info_def)+
 
-output_list -> value_info+
+initializer_list -> init_tensor(tensor_def)+
 
-initializer_list -> tensor+
+node -> Op_type(op_type_def, str), Name(name_def, str), (input_list | input_arr), (output_list | output_arr), attribute_list?
 
-node -> Op_type(str), Name(str), (input_list | input_arr), (output_list | output_arr), attribute_list?
+input_arr -> Input(STRING_LITERAL, str)+
 
-input_arr -> Input(str)+
+output_arr -> Output(STRING_LITERAL, str)+
 
-output_arr -> Output(str)+
+attribute_list -> attribute(attribute_def)+
 
-attribute_list -> attribute+
+attribute -> Name(name_def, str), Value(value_def, str)
 
-attribute -> Name(str), Value(str)
+io_tensor -> Name(name_def, str), Type(elem_type_def, enum), io_shape(shape_def)
 
-value_info -> Name(str), tensor_type
+io_shape -> io_dim(dim_def)+
 
-tensor_type -> Elem_type(enum), shape
+io_dim -> Dim_value(INTEGER_LITERAL, int) | Dim_param(STRING_LITERAL, str)
 
-shape -> dim+
+init_tensor -> Name(name_def, str), Type(data_type_def, enum), init_shape(dims_def), Raw_data(raw_data_def, bytes)
 
-dim -> Dim_value(int) | Dim_param(str)
-
-tensor -> Name(str), Data_type(enum), dims_array, Raw_data(bytes)
-
-dims_array -> Dims_element(int)+
-
-opset_import -> Domain(str), Version(int)
+init_shape -> Dim_value(INTEGER_LITERAL, int)+

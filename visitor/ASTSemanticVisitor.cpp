@@ -1,29 +1,11 @@
 #include "ASTSemanticVisitor.hpp"
-#include "ast/AST.hpp"
 
 namespace sonnx
 {
 
 void ASTSemanticVisitor::visit(const ModelNode &node)
 {
-    // Process model components in order
-    // 1. First process inputs (declarations)
-    if (node.getInputList())
-    {
-        processing_model_inputs_ = true;
-        node.getInputList()->accept(*this);
-        processing_model_inputs_ = false;
-    }
-
-    // 2. Process outputs (declarations)
-    if (node.getOutputList())
-    {
-        processing_model_outputs_ = true;
-        node.getOutputList()->accept(*this);
-        processing_model_outputs_ = false;
-    }
-
-    // 3. Process initializers (definitions)
+    // Visit components in order
     if (node.getInitializerList())
     {
         processing_initializers_ = true;
@@ -31,184 +13,182 @@ void ASTSemanticVisitor::visit(const ModelNode &node)
         processing_initializers_ = false;
     }
 
-    // 4. Process nodes
+    if (node.getInputList())
+    {
+        processing_model_inputs_ = true;
+        node.getInputList()->accept(*this);
+        processing_model_inputs_ = false;
+    }
+
     if (node.getNodeList())
     {
         node.getNodeList()->accept(*this);
     }
 
-    // 5. Final validation
-    buildDAG();
+    if (node.getOutputList())
+    {
+        processing_model_outputs_ = true;
+        node.getOutputList()->accept(*this);
+        processing_model_outputs_ = false;
+    }
+
+    // Perform semantic analysis after visiting all nodes
+    performSemanticAnalysis();
 }
 
 void ASTSemanticVisitor::visit(const NodeListNode &node)
 {
-    for (const auto &child : node.getNodes())
+    for (const auto &n : node.getNodes())
     {
-        if (child)
+        if (n)
         {
-            child->accept(*this);
+            n->accept(*this);
         }
-    }
-}
-
-void ASTSemanticVisitor::visit(const InputArrNode &node)
-{
-    std::vector<std::string> tensor_names = extractStringArrayFromNode(&node);
-    for (const auto &tensor_name : tensor_names)
-    {
-        declared_tensors_.insert(tensor_name);
-    }
-}
-
-void ASTSemanticVisitor::visit(const OutputArrNode &node)
-{
-    std::vector<std::string> tensor_names = extractStringArrayFromNode(&node);
-    for (const auto &tensor_name : tensor_names)
-    {
-        declared_tensors_.insert(tensor_name);
     }
 }
 
 void ASTSemanticVisitor::visit(const InputListNode &node)
 {
-    processing_model_inputs_ = true;
-
-    for (const auto &io_tensor : node.getIOTensors())
+    for (const auto &tensor : node.getIOTensors())
     {
-        io_tensor->accept(*this);
+        if (tensor)
+        {
+            tensor->accept(*this);
+        }
     }
-
-    processing_model_inputs_ = false;
 }
 
 void ASTSemanticVisitor::visit(const OutputListNode &node)
 {
-    processing_model_outputs_ = true;
-
-    for (const auto &io_tensor : node.getIOTensors())
+    for (const auto &tensor : node.getIOTensors())
     {
-        io_tensor->accept(*this);
+        if (tensor)
+        {
+            tensor->accept(*this);
+        }
     }
-
-    processing_model_outputs_ = false;
 }
 
 void ASTSemanticVisitor::visit(const InitializerListNode &node)
 {
-    processing_initializers_ = true;
-
-    for (const auto &init_tensor : node.getInitTensors())
+    for (const auto &tensor : node.getInitTensors())
     {
-        init_tensor->accept(*this);
+        if (tensor)
+        {
+            tensor->accept(*this);
+        }
     }
-
-    processing_initializers_ = false;
 }
 
 void ASTSemanticVisitor::visit(const NodeNode &node)
 {
-    // Get node info using AST interfaces
-    const ASTNode *name_node = node.getName();
-    const ASTNode *op_type_node = node.getOpType();
-    if (!name_node || !op_type_node)
-        return;
+    // Extract node information
+    std::string node_name = extractStringFromNode(node.getName());
+    std::string op_type = extractStringFromNode(node.getOpType());
 
-    std::string node_name = extractStringFromNode(name_node);
-    std::string op_type = extractStringFromNode(op_type_node);
+    // Store current node name for child visits
+    current_node_name_ = node_name;
 
-    // 1. Node name conflict check
-    if (symbol_table_.getNodeSymbol(node_name))
+    // Check for duplicate node names
+    if (!symbol_table_.insertNodeSymbol(node_name, op_type, &node))
     {
-        reportError("Node name conflict: '" + node_name + "'");
-        return;
+        reportError("Duplicate node name: '" + node_name + "'");
     }
 
-    // Insert node
-    symbol_table_.insertNodeSymbol(node_name, op_type, &node);
-    NodeSymbol *node_sym = symbol_table_.getNodeSymbol(node_name);
-    if (!node_sym)
-        return;
+    // Clear refs for this node
+    node_input_refs_.clear();
+    node_output_refs_.clear();
 
-    // Process INPUTS using container access methods
-    const ASTNode *input_container = node.getInputListOrArray();
-    auto input_names = extractTensorNamesFromInput(input_container);
-    for (const auto &input_name : input_names)
+    // Visit inputs and outputs
+    if (node.getInputListOrArray())
     {
-        node_input_refs_.insert(input_name);
+        node.getInputListOrArray()->accept(*this);
+    }
+    if (node.getOutputListOrArray())
+    {
+        node.getOutputListOrArray()->accept(*this);
     }
 
-    // Register input references and connect
-    for (const auto &input_name : input_names)
+    // Build edges in symbol table
+    if (auto* node_symbol = symbol_table_.getNodeSymbol(node_name))
     {
-        tensor_references_.insert(input_name);
-
-        // Connect if tensor exists
-        if (auto *tensor = symbol_table_.getTensorSymbol(input_name))
+        // Add input edges
+        for (const auto& input_ref : node_input_refs_)
         {
-            node_sym->addInput(tensor);
-            tensor->addUser(node_sym);
+            if (auto* tensor_symbol = symbol_table_.getTensorSymbol(input_ref))
+            {
+                node_symbol->addInput(tensor_symbol);
+            }
+            else if (defined_tensors_.find(input_ref) == defined_tensors_.end())
+            {
+                reportError("Node '" + node_name + "' references undefined input '" + input_ref + "'");
+            }
+        }
+
+        // Add output edges
+        for (const auto& output_ref : node_output_refs_)
+        {
+            if (auto* tensor_symbol = symbol_table_.getTensorSymbol(output_ref))
+            {
+                // Check if tensor already has a producer
+                if (tensor_symbol->getProducer() != nullptr)
+                {
+                    reportError("Tensor '" + output_ref + "' is produced by multiple nodes");
+                }
+                else
+                {
+                    node_symbol->addOutput(tensor_symbol);
+                }
+            }
         }
     }
 
-    // Process OUTPUTS using container access methods
-    const ASTNode *output_container = node.getOutputListOrArray();
-    bool is_output_definition = (output_container && output_container->getASTNodeType() == NodeType::OUTPUT_LIST);
-    auto output_names = extractTensorNamesFromOutput(output_container);
-    for (const auto &output_name : output_names)
+    // Visit attributes if present
+    if (node.getAttributeList())
     {
-        node_output_refs_.insert(output_name);
+        node.getAttributeList()->accept(*this);
     }
+}
 
-    for (const auto &output_name : output_names)
+void ASTSemanticVisitor::visit(const InputArrNode &node)
+{
+    for (const auto &str_node : node.getInputElements())
     {
-        tensor_references_.insert(output_name);
-
-        // 3. Output name conflict check
-        if (auto it = output_ownership_.find(output_name); it != output_ownership_.end() && it->second != node_name)
+        if (str_node)
         {
-            reportError("Output conflict: '" + output_name + "' already owned by '" + it->second + "'");
-            continue;
+            std::string tensor_ref = extractStringFromNode(str_node.get());
+            node_input_refs_.push_back(tensor_ref);
         }
+    }
+}
 
-        // DECLARATION vs DEFINITION handling
-        if (is_output_definition)
+void ASTSemanticVisitor::visit(const OutputArrNode &node)
+{
+    for (const auto &str_node : node.getOutputElements())
+    {
+        if (str_node)
         {
-            // 2. Tensor name conflict (redefinition)
-            if (defined_tensors_.count(output_name))
-            {
-                reportError("Tensor redefinition: '" + output_name + "'");
-                continue;
-            }
+            std::string tensor_ref = extractStringFromNode(str_node.get());
+            node_output_refs_.push_back(tensor_ref);
 
-            // Create or reuse tensor
-            TensorSymbol *tensor_sym = symbol_table_.getTensorSymbol(output_name);
-            if (!tensor_sym)
+            // Define the tensor if not already defined
+            if (defined_tensors_.find(tensor_ref) == defined_tensors_.end())
             {
-                symbol_table_.insertTensorSymbol(output_name, DataType::UNDEFINED, &node);
-                tensor_sym = symbol_table_.getTensorSymbol(output_name);
-            }
-
-            if (tensor_sym)
-            {
-                // Connect node to tensor
-                node_sym->addOutput(tensor_sym);
-                tensor_sym->setProducer(node_sym);
-
-                // Update definition state
-                defined_tensors_.insert(output_name);
-                declared_tensors_.erase(output_name);
-                output_ownership_[output_name] = node_name;
+                // Create tensor with undefined type (will be inferred later)
+                symbol_table_.insertTensorSymbol(tensor_ref, DataType::UNDEFINED, str_node.get());
+                defined_tensors_.insert(tensor_ref);
             }
         }
-        else
+    }
+}
+
+void ASTSemanticVisitor::visit(const AttributeListNode &node)
+{
+    for (const auto &attr : node.getAttributes())
+    {
+        if (attr)
         {
-            // Output declaration handling
-            if (!symbol_table_.getTensorSymbol(output_name))
-            {
-                symbol_table_.insertTensorSymbol(output_name, DataType::UNDEFINED, nullptr);
-            }
-            declared_tensors_.insert(output_name);
+            attr->accept(*this);
         }
     }
 }
@@ -218,35 +198,44 @@ void ASTSemanticVisitor::visit(const IOTensorNode &node)
     std::string tensor_name = extractStringFromNode(node.getName());
     DataType data_type = extractDataTypeFromNode(node.getType());
 
-    if (processing_model_inputs_)
+    // Check for duplicate tensor names
+    if (defined_tensors_.count(tensor_name) > 0)
     {
-        input_list_defined_.insert(tensor_name);
-
-        if (declared_tensors_.count(tensor_name) == 0)
-        {
-        }
-    }
-    else if (processing_model_outputs_)
-    {
-        output_list_defined_.insert(tensor_name);
-
-        if (declared_tensors_.count(tensor_name) == 0)
-        {
-        }
+        reportError("Duplicate tensor name: '" + tensor_name + "'");
+        return;
     }
 
-    if (!symbol_table_.getTensorSymbol(tensor_name))
+    // Insert tensor symbol
+    if (!symbol_table_.insertTensorSymbol(tensor_name, data_type, &node))
     {
-        symbol_table_.insertTensorSymbol(tensor_name, data_type, &node);
-        auto *tensor_sym = symbol_table_.getTensorSymbol(tensor_name);
+        reportError("Failed to insert tensor: '" + tensor_name + "'");
+    }
+    else
+    {
+        defined_tensors_.insert(tensor_name);
+
         if (processing_model_inputs_)
         {
-            tensor_sym->setIsModelInput(true);
+            model_input_names_.insert(tensor_name);
+            if (auto* tensor_sym = symbol_table_.getTensorSymbol(tensor_name))
+            {
+                tensor_sym->setIsModelInput(true);
+            }
         }
         else if (processing_model_outputs_)
         {
-            tensor_sym->setIsModelOutput(true);
+            model_output_names_.insert(tensor_name);
+            if (auto* tensor_sym = symbol_table_.getTensorSymbol(tensor_name))
+            {
+                tensor_sym->setIsModelOutput(true);
+            }
         }
+    }
+
+    // Visit shape if present
+    if (node.getIOShape())
+    {
+        node.getIOShape()->accept(*this);
     }
 }
 
@@ -255,326 +244,106 @@ void ASTSemanticVisitor::visit(const InitTensorNode &node)
     std::string tensor_name = extractStringFromNode(node.getName());
     DataType data_type = extractDataTypeFromNode(node.getType());
 
-    initializer_defined_.insert(tensor_name);
-
-    if (!symbol_table_.getTensorSymbol(tensor_name))
+    // Check for duplicate tensor names
+    if (defined_tensors_.count(tensor_name) > 0)
     {
-        symbol_table_.insertTensorSymbol(tensor_name, data_type, &node);
+        reportError("Duplicate tensor name: '" + tensor_name + "'");
+        return;
     }
-    if (auto *tensor_sym = symbol_table_.getTensorSymbol(tensor_name))
+
+    // Insert tensor symbol
+    if (!symbol_table_.insertTensorSymbol(tensor_name, data_type, &node))
     {
-        tensor_sym->setIsInitializer(true);
+        reportError("Failed to insert initializer tensor: '" + tensor_name + "'");
+    }
+    else
+    {
+        defined_tensors_.insert(tensor_name);
+        initializer_defined_.insert(tensor_name);
+
+        if (auto* tensor_sym = symbol_table_.getTensorSymbol(tensor_name))
+        {
+            tensor_sym->setIsInitializer(true);
+        }
     }
 }
 
-void ASTSemanticVisitor::buildDAG()
+void ASTSemanticVisitor::performSemanticAnalysis()
 {
-    // 4. Input tensor definition check
-    std::unordered_set<std::string> undefined;
-    for (const auto &tensor : tensor_references_)
-    {
-        const bool is_initializer = initializer_tensors_.count(tensor);
+    checkUndefinedInputs();
+    checkUnusedOutputs();
+    runDAGAnalysis();
+}
 
-        // Missing definition - report specific error
-        if (!defined_tensors_.count(tensor))
+void ASTSemanticVisitor::checkUndefinedInputs()
+{
+    // Check that all model outputs are defined
+    for (const auto& output_name : model_output_names_)
+    {
+        if (defined_tensors_.find(output_name) == defined_tensors_.end())
         {
-            reportError((is_initializer ? "Initializer must be defined: '" : "Input tensor must be defined: '") +
-                        tensor + "'");
-            undefined.insert(tensor);
+            reportError("Model output '" + output_name + "' is not defined");
         }
     }
+}
 
-    // 5. Declaration without definition
-    for (const auto &tensor : declared_tensors_)
+void ASTSemanticVisitor::checkUnusedOutputs() const
+{
+    // Check for tensors that are produced but never consumed
+    for (auto* tensor : symbol_table_.getAllTensorSymbols())
     {
-        if (!defined_tensors_.count(tensor) && !undefined.count(tensor))
+        if (!tensor->isModelOutput() && tensor->getUsers().empty() && tensor->getProducer())
         {
-            reportError("Declared tensor never defined: '" + tensor + "'");
+            // This tensor is produced but never used
+            // Could report as warning
         }
     }
+}
+
+void ASTSemanticVisitor::runDAGAnalysis()
+{
+    // Build the DAG
+    symbol_table_.buildDAG();
+
+    // Perform topological sort
+    symbol_table_.performTopologicalSort();
+
+    if (symbol_table_.hasCycle())
+    {
+        reportError("Cycle detected in computation graph");
+    }
+
+    // Run optimization detection
+    symbol_table_.detectConstantFolding();
+    symbol_table_.detectDeadCode();
+    symbol_table_.detectCommonSubexpressions();
 }
 
 void ASTSemanticVisitor::reportError(const std::string &message)
 {
-    errors_.push_back(message);
+    errors_.push_back("Semantic error: " + message);
 }
 
-void ASTSemanticVisitor::checkNameConflict(const std::string &name, bool is_tensor)
-{
-    if (is_tensor)
-    {
-        if (symbol_table_.getTensorSymbol(name) != nullptr)
-        {
-            reportError("Tensor name conflict: tensor '" + name + "' already exists");
-        }
-    }
-    else
-    {
-        if (symbol_table_.getNodeSymbol(name) != nullptr)
-        {
-            reportError("Node name conflict: node '" + name + "' already exists");
-        }
-    }
-}
-
-void ASTSemanticVisitor::checkUndefinedReference(const std::string &tensor_name, bool is_initializer)
-{
-    // Check if tensor is defined
-    bool is_defined = (defined_tensors_.find(tensor_name) != defined_tensors_.end()) ||
-                      (model_input_tensors_.find(tensor_name) != model_input_tensors_.end());
-
-    if (!is_defined)
-    {
-        if (is_initializer || initializer_tensors_.find(tensor_name) != initializer_tensors_.end())
-        {
-            reportError("Undefined initializer: initializer '" + tensor_name +
-                        "' must be defined before being referenced");
-        }
-        else
-        {
-            reportError("Undefined tensor: input tensor '" + tensor_name + "' must be defined before being referenced");
-        }
-    }
-}
-
-void ASTSemanticVisitor::checkOutputConflict(const std::string &tensor_name, const std::string &node_name)
-{
-    if (auto it = output_tensors_.find(tensor_name); it != output_tensors_.end())
-    {
-        reportError("Output tensor '" + tensor_name + "' conflict: already produced by node '" + it->second + "'");
-    }
-    else
-    {
-        output_tensors_[tensor_name] = node_name;
-    }
-}
-
-void ASTSemanticVisitor::validateTypeCompatibility()
-{
-    // Type compatibility validation (placeholder for future implementation)
-    // This would check operator-specific type constraints
-    auto all_nodes = symbol_table_.getAllNodeSymbols();
-    for (auto *node_symbol : all_nodes)
-    {
-        // Example: Check binary operators require same input types
-        if (node_symbol->getOpType() == "Add" || node_symbol->getOpType() == "Sub" ||
-            node_symbol->getOpType() == "Mul" || node_symbol->getOpType() == "Div")
-        {
-
-            const auto &inputs = node_symbol->getInputs();
-            if (inputs.size() >= 2)
-            {
-                DataType first_type = inputs[0]->getDataType();
-                for (size_t i = 1; i < inputs.size(); ++i)
-                {
-                    if (inputs[i]->getDataType() != first_type)
-                    {
-                        reportError("Type mismatch: operator '" + node_symbol->getOpType() +
-                                    "' requires all input tensors to have the same type");
-                        break;
-                    }
-                }
-            }
-        }
-    }
-}
-
-void ASTSemanticVisitor::validateModelIOCompatibility()
-{
-    // Check model input/output compatibility (placeholder for future implementation)
-    for (const auto &output_name : model_output_tensors_)
-    {
-        TensorSymbol *output_tensor = symbol_table_.getTensorSymbol(output_name);
-        if (output_tensor && output_tensor->getProducer())
-        {
-            const NodeSymbol *producer = output_tensor->getProducer();
-            // Additional validation could be added here based on operation types
-        }
-    }
-}
-
-// Helper method implementations (these would need to be implemented based on your AST structure)
 std::string ASTSemanticVisitor::extractStringFromNode(const ASTNode *node)
 {
-    // This method should extract string value from nodes like StrLiteralNode
-    // Implementation depends on your specific AST node structure
-    if (node && node->getASTNodeType() == NodeType::STR_LITERAL)
+    if (!node) return "";
+
+    if (auto* str_node = dynamic_cast<const StrLiteralNode*>(node))
     {
-        const auto *str_node = dynamic_cast<const StrLiteralNode *>(node);
-        return str_node->getValue(); // Assuming getValue() method exists
+        return str_node->getValue();
     }
     return "";
 }
 
-std::vector<std::string> ASTSemanticVisitor::extractStringArrayFromNode(const ASTNode *node)
-{
-    // This method should extract array of strings from array nodes
-    // Implementation depends on your specific AST node structure
-    std::vector<std::string> result;
-
-    // This is a placeholder implementation
-    // You would need to traverse the array node and extract string values
-
-    return result;
-}
-
 DataType ASTSemanticVisitor::extractDataTypeFromNode(const ASTNode *node)
 {
-    if (!node)
-        return DataType::UNDEFINED;
+    if (!node) return DataType::UNDEFINED;
 
-    if (node->getASTNodeType() == NodeType::TYPE_ENUM)
+    if (auto* type_node = dynamic_cast<const TypeEnumNode*>(node))
     {
-        const auto *type_node = dynamic_cast<const TypeEnumNode *>(node);
         return type_node->getValue();
     }
     return DataType::UNDEFINED;
-}
-
-// Helper to extract strings from input containers using proper AST interfaces
-std::vector<std::string> ASTSemanticVisitor::extractTensorNamesFromInput(const ASTNode *container)
-{
-    std::vector<std::string> names;
-    if (!container)
-        return names;
-
-    switch (container->getASTNodeType())
-    {
-    case NodeType::INPUT_LIST: {
-        const auto *list = dynamic_cast<const InputListNode *>(container);
-        for (const auto &io_tensor : list->getIOTensors())
-        {
-            if (io_tensor->getASTNodeType() == NodeType::IO_TENSOR)
-            {
-                names.push_back(extractStringFromNode(dynamic_cast<const IOTensorNode *>(io_tensor.get())->getName()));
-            }
-        }
-        break;
-    }
-    case NodeType::INPUT_ARR: {
-        const auto *arr = dynamic_cast<const InputArrNode *>(container);
-        for (const auto &item : arr->getInputElements())
-        {
-            if (item->getASTNodeType() == NodeType::STR_LITERAL)
-            {
-                names.push_back(dynamic_cast<const StrLiteralNode *>(item.get())->getValue());
-            }
-        }
-        break;
-    }
-    default:
-        break;
-    }
-    return names;
-}
-
-// Helper to extract strings from output containers using proper AST interfaces
-std::vector<std::string> ASTSemanticVisitor::extractTensorNamesFromOutput(const ASTNode *container)
-{
-    std::vector<std::string> names;
-    if (!container)
-        return names;
-
-    switch (container->getASTNodeType())
-    {
-    case NodeType::OUTPUT_LIST: {
-        const auto *list = dynamic_cast<const OutputListNode *>(container);
-        for (const auto &io_tensor : list->getIOTensors())
-        {
-            if (io_tensor->getASTNodeType() == NodeType::IO_TENSOR)
-            {
-                names.push_back(extractStringFromNode(dynamic_cast<const IOTensorNode *>(io_tensor.get())->getName()));
-            }
-        }
-        break;
-    }
-    case NodeType::OUTPUT_ARR: {
-        const auto *arr = dynamic_cast<const OutputArrNode *>(container);
-        for (const auto &item : arr->getOutputElements())
-        {
-            if (item->getASTNodeType() == NodeType::STR_LITERAL)
-            {
-                names.push_back(dynamic_cast<const StrLiteralNode *>(item.get())->getValue());
-            }
-        }
-        break;
-    }
-    default:
-        break;
-    }
-    return names;
-}
-
-bool ASTSemanticVisitor::isTensorDefined(const std::string &tensor_name) const
-{
-    return input_list_defined_.count(tensor_name) > 0 || output_list_defined_.count(tensor_name) > 0 ||
-           initializer_defined_.count(tensor_name) > 0 || node_output_refs_.count(tensor_name) > 0 ||
-           defined_tensors_.count(tensor_name) > 0 || initializer_defined_.count(tensor_name) > 0;
-}
-
-void ASTSemanticVisitor::checkDeclarationDefinitionConsistency()
-{
-    // Add initializers as valid definitions for declared tensors
-    for (const auto &tensor : declared_tensors_)
-    {
-        if (!defined_tensors_.count(tensor) && !initializer_defined_.count(tensor))
-        {
-            reportError("Tensor '" + tensor + "' declared but not defined");
-        }
-    }
-
-    for (const auto &input_ref : node_input_refs_)
-    {
-        if (!isTensorDefined(input_ref))
-        {
-            reportError("Undefined tensor reference: '" + input_ref + "' is referenced but never defined");
-        }
-    }
-
-    std::unordered_set<std::string> all_definitions;
-
-    for (const auto &tensor : input_list_defined_)
-    {
-        if (all_definitions.count(tensor))
-        {
-            reportError("Multiple definitions: tensor '" + tensor + "' defined multiple times");
-        }
-        all_definitions.insert(tensor);
-    }
-
-    for (const auto &tensor : output_list_defined_)
-    {
-        if (all_definitions.count(tensor))
-        {
-            reportError("Multiple definitions: tensor '" + tensor + "' defined multiple times");
-        }
-        all_definitions.insert(tensor);
-    }
-
-    // Check for initializers defining declared tensors
-    for (const auto &tensor : initializer_defined_)
-    {
-        if (declared_tensors_.count(tensor))
-        {
-            // Mark initializer as valid definition for declared tensor
-            defined_tensors_.insert(tensor);
-            // Update tensor symbol to reflect dual nature
-            if (auto *t_sym = symbol_table_.getTensorSymbol(tensor))
-            {
-                t_sym->setIsModelInput(true); // For input_arr declared tensors
-                t_sym->setIsInitializer(true);
-            }
-        }
-    }
-
-    for (const auto &tensor : node_output_refs_)
-    {
-        if (all_definitions.count(tensor))
-        {
-            reportError("Multiple definitions: tensor '" + tensor + "' defined multiple times");
-        }
-        all_definitions.insert(tensor);
-    }
 }
 
 } // namespace sonnx

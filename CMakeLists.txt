@@ -31,9 +31,9 @@ add_executable(sonnxc
         ${generated_source_files}
         ast/AST.cpp
         error_listener/LexicalErrorListener.cpp
+        error_listener/ParserErrorListener.cpp
         error_listener/ParserErrorStrategy.cpp
-        error_listener/ParserErrorStrategy.cpp
-        listener/ASTConstructionListener.cpp
+        visitor/ASTConstructionVisitor.cpp
         utils/Literal2Cpp.cpp
         visitor/ASTBaseVisitor.cpp
         visitor/ASTOutputVisitor.cpp

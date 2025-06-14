@@ -55,7 +55,7 @@ class ASTNode
     ASTNode(ASTNode &&) = delete;
     auto operator=(ASTNode &&) -> ASTNode & = delete;
     [[nodiscard]] virtual auto getASTNodeType() const -> NodeType = 0;
-    virtual void accept(class Visitor &visitor) const = 0;
+    virtual void accept(class ASTBaseVisitor &visitor) const = 0;
 };
 
 class U32LiteralNode final : public ASTNode
@@ -68,7 +68,7 @@ class U32LiteralNode final : public ASTNode
     {
         return NodeType::U32_LITERAL;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> uint32_t
     {
         return value_;
@@ -88,7 +88,7 @@ class U64LiteralNode final : public ASTNode
     {
         return NodeType::U64_LITERAL;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> uint64_t
     {
         return value_;
@@ -108,7 +108,7 @@ class StrLiteralNode final : public ASTNode
     {
         return NodeType::STR_LITERAL;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> std::string
     {
         return value_;
@@ -128,7 +128,7 @@ class BytesLiteralNode final : public ASTNode
     {
         return NodeType::BYTES_LITERAL;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> const std::vector<uint8_t> &
     {
         return value_;
@@ -148,7 +148,7 @@ class TypeEnumNode final : public ASTNode
     {
         return NodeType::TYPE_ENUM;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> DataType
     {
         return value_;
@@ -180,7 +180,7 @@ class ModelNode final : public ASTNode
     {
         return NodeType::MODEL;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 
     [[nodiscard]] auto getIrVersion() const -> const ASTNode *
     {
@@ -261,7 +261,7 @@ class NodeListNode final : public ASTNode
     {
         return NodeType::NODE_LIST;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getNodes() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return nodes_;
@@ -281,7 +281,7 @@ class InputListNode final : public ASTNode
     {
         return NodeType::INPUT_LIST;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getIOTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return io_tensors_;
@@ -301,7 +301,7 @@ class OutputListNode final : public ASTNode
     {
         return NodeType::OUTPUT_LIST;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getIOTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return io_tensors_;
@@ -322,7 +322,7 @@ class InitializerListNode final : public ASTNode
     {
         return NodeType::INITIALIZER_LIST;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getInitTensors() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return init_tensors_;
@@ -346,7 +346,7 @@ class NodeNode final : public ASTNode
     {
         return NodeType::NODE;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 
     [[nodiscard]] auto getOpType() const -> const ASTNode *
     {
@@ -388,7 +388,7 @@ class InputArrNode final : public ASTNode
     {
         return NodeType::INPUT_ARR;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getInputElements() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return input_elements_;
@@ -409,7 +409,7 @@ class OutputArrNode final : public ASTNode
     {
         return NodeType::OUTPUT_ARR;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getOutputElements() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return output_elements_;
@@ -429,7 +429,7 @@ class AttributeListNode final : public ASTNode
     {
         return NodeType::ATTRIBUTE_LIST;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getAttributes() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return attributes_;
@@ -450,7 +450,7 @@ class AttributeNode final : public ASTNode
     {
         return NodeType::ATTRIBUTE;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 
     [[nodiscard]] auto getName() const -> const ASTNode *
     {
@@ -477,7 +477,7 @@ class IOTensorNode final : public ASTNode
     {
         return NodeType::IO_TENSOR;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 
     [[nodiscard]] auto getName() const -> const ASTNode *
     {
@@ -508,7 +508,7 @@ class IOShapeNode final : public ASTNode
     {
         return NodeType::IO_SHAPE;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getIODims() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return io_dims_;
@@ -528,7 +528,7 @@ class IODimNode final : public ASTNode
     {
         return NodeType::IO_DIM;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getValue() const -> const ASTNode *
     {
         return value_or_param_.get();
@@ -551,7 +551,7 @@ class InitTensorNode final : public ASTNode
     {
         return NodeType::INIT_TENSOR;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 
     [[nodiscard]] auto getName() const -> const ASTNode *
     {
@@ -587,7 +587,7 @@ class InitShapeNode final : public ASTNode
     {
         return NodeType::INIT_SHAPE;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
     [[nodiscard]] auto getDimValues() const -> const std::vector<std::unique_ptr<ASTNode>> &
     {
         return dim_values_;
@@ -604,7 +604,7 @@ class ErrorNode final : public ASTNode
     {
         return NodeType::ERROR_NODE;
     }
-    void accept(Visitor &visitor) const override;
+    void accept(ASTBaseVisitor &visitor) const override;
 };
 
 } // namespace sonnx

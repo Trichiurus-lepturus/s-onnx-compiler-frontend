@@ -5,87 +5,87 @@
 namespace sonnx
 {
 
-void U32LiteralNode::accept(Visitor &visitor) const
+void U32LiteralNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void U64LiteralNode::accept(Visitor &visitor) const
+void U64LiteralNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void StrLiteralNode::accept(Visitor &visitor) const
+void StrLiteralNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void BytesLiteralNode::accept(Visitor &visitor) const
+void BytesLiteralNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void TypeEnumNode::accept(Visitor &visitor) const
+void TypeEnumNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void ModelNode::accept(Visitor &visitor) const
+void ModelNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void NodeListNode::accept(Visitor &visitor) const
+void NodeListNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void InputListNode::accept(Visitor &visitor) const
+void InputListNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void OutputListNode::accept(Visitor &visitor) const
+void OutputListNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void InitializerListNode::accept(Visitor &visitor) const
+void InitializerListNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void NodeNode::accept(Visitor &visitor) const
+void NodeNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void InputArrNode::accept(Visitor &visitor) const
+void InputArrNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void OutputArrNode::accept(Visitor &visitor) const
+void OutputArrNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void AttributeListNode::accept(Visitor &visitor) const
+void AttributeListNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void AttributeNode::accept(Visitor &visitor) const
+void AttributeNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void IOTensorNode::accept(Visitor &visitor) const
+void IOTensorNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void IOShapeNode::accept(Visitor &visitor) const
+void IOShapeNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void IODimNode::accept(Visitor &visitor) const
+void IODimNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void InitTensorNode::accept(Visitor &visitor) const
+void InitTensorNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void InitShapeNode::accept(Visitor &visitor) const
+void InitShapeNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void ErrorNode::accept(Visitor &visitor) const
+void ErrorNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }

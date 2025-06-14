@@ -18,7 +18,7 @@ attribute_list -> attribute(attribute_def)+
 
 attribute -> Name(name_def, str), Value(value_def, str)
 
-io_tensor -> Name(name_def, str), Type(elem_type_def, enum), io_shape(shape_def)
+io_tensor -> Name(name_def, str), Type(elem_type_def, enum), io_shape(dim_list)
 
 io_shape -> io_dim(dim_def)+
 

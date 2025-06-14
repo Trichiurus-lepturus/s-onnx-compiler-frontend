@@ -12,7 +12,7 @@
 namespace sonnx
 {
 
-class ASTOutputVisitor final : public Visitor
+class ASTOutputVisitor final : public ASTBaseVisitor
 {
   private:
     std::stringstream m_ss;

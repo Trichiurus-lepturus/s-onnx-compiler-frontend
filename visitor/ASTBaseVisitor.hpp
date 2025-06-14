@@ -4,15 +4,15 @@
 namespace sonnx
 {
 
-class Visitor
+class ASTBaseVisitor
 {
   public:
-    Visitor() = default;
-    virtual ~Visitor() = default;
-    Visitor(const Visitor &) = delete;
-    auto operator=(const Visitor &) -> Visitor & = delete;
-    Visitor(Visitor &&) = delete;
-    auto operator=(Visitor &&) -> Visitor & = delete;
+    ASTBaseVisitor() = default;
+    virtual ~ASTBaseVisitor() = default;
+    ASTBaseVisitor(const ASTBaseVisitor &) = delete;
+    auto operator=(const ASTBaseVisitor &) -> ASTBaseVisitor & = delete;
+    ASTBaseVisitor(ASTBaseVisitor &&) = delete;
+    auto operator=(ASTBaseVisitor &&) -> ASTBaseVisitor & = delete;
 
     virtual void visit(const class U32LiteralNode &node) = 0;
     virtual void visit(const class U64LiteralNode &node) = 0;

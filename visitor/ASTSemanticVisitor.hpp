@@ -112,7 +112,7 @@ class ASTSemanticVisitor final : public ASTBaseVisitor
     std::unordered_map<std::string, std::vector<std::string>> node_output_refs_;
 
     // Helper methods
-    void reportError(const std::string &message, bool terminate = false);
+    void reportError(const std::string &message, bool terminate = true);
     void performSemanticAnalysis();
     static std::string extractStringFromNode(const ASTNode *node);
     static DataType extractDataTypeFromNode(const ASTNode *node);

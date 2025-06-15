@@ -8,7 +8,7 @@
 #ifdef DEBUG_IO_CONSISTENCY
 #include <iostream>
 #endif
-#include <iostream>
+
 namespace sonnx
 {
 

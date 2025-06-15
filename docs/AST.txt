@@ -20,9 +20,7 @@ attribute -> Name(name_def, str), Value(value_def, str)
 
 io_tensor -> Name(name_def, str), Type(elem_type_def, enum), io_shape(dim_list)
 
-io_shape -> io_dim(dim_def)+
-
-io_dim -> Dim_value(INTEGER_LITERAL, int) | Dim_param(STRING_LITERAL, str)
+io_shape -> (Dim_value(INTEGER_LITERAL, int) | Dim_param(STRING_LITERAL, str))+
 
 init_tensor -> Name(name_def, str), Type(data_type_def, enum), init_shape(dims_def), Raw_data(raw_data_def, bytes)
 

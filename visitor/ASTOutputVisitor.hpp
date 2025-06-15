@@ -57,7 +57,6 @@ class ASTOutputVisitor final : public ASTBaseVisitor
     void visit(const AttributeNode &node) override;
     void visit(const IOTensorNode &node) override;
     void visit(const IOShapeNode &node) override;
-    void visit(const IODimNode &node) override;
     void visit(const InitTensorNode &node) override;
     void visit(const InitShapeNode &node) override;
     void visit(const ErrorNode &node) override;

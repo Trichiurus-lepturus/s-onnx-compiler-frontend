@@ -1,6 +1,8 @@
 #include "SymbolTable.hpp"
 #include <algorithm>
 #include <queue>
+#include <sstream>
+#include <iostream>
 
 namespace sonnx
 {
@@ -125,7 +127,7 @@ void SymbolTable::performTopologicalSort()
 }
 
 bool SymbolTable::topologicalSortDFS(NodeSymbol *node, std::unordered_set<NodeSymbol *> &visited,
-                                    std::unordered_set<NodeSymbol *> &recursion_stack)
+                                     std::unordered_set<NodeSymbol *> &recursion_stack)
 {
     visited.insert(node);
     recursion_stack.insert(node);
@@ -176,7 +178,7 @@ void SymbolTable::detectConstantFolding()
     }
 }
 
-void SymbolTable::detectDeadCode()
+void SymbolTable::detectDeadCode() const
 {
     std::unordered_set<const TensorSymbol *> used_tensors;
 
@@ -223,13 +225,13 @@ void SymbolTable::detectDeadCode()
 
 void SymbolTable::detectCommonSubexpressions()
 {
-    std::map<std::string, std::vector<NodeSymbol*>> operation_patterns;
+    std::map<std::string, std::vector<NodeSymbol *>> operation_patterns;
 
-    for (auto* node : topological_order_)
+    for (auto *node : topological_order_)
     {
         // Create a signature for the operation
         std::string op_signature = node->getOpType() + ":";
-        for (const auto* input : node->getInputs())
+        for (const auto *input : node->getInputs())
         {
             op_signature += input->getName() + ",";
         }
@@ -237,7 +239,7 @@ void SymbolTable::detectCommonSubexpressions()
     }
 
     // Nodes with the same pattern could be optimized
-    for (const auto& [pattern, nodes] : operation_patterns)
+    for (const auto &[pattern, nodes] : operation_patterns)
     {
         if (nodes.size() > 1)
         {
@@ -254,6 +256,119 @@ void SymbolTable::clear()
     reverse_dag_edges_.clear();
     topological_order_.clear();
     has_cycle_ = false;
+}
+
+std::string SymbolTable::generateTACode() const
+{
+    std::ostringstream code;
+
+    // Generate Input tensors
+    for (const auto *tensor : getAllTensorSymbols())
+    {
+        if (tensor->isModelInput())
+        {
+            std::string t_var = getOrCreateTVariableName(tensor->getName());
+            code << t_var << " = Input(\"" << tensor->getName() << "\", " << dataTypeToString(tensor->getDataType())
+                 << ", " << tensor->getShapeString() << ")\n";
+        }
+    }
+
+    // Generate Initializer tensors
+    for (const auto *tensor : getAllTensorSymbols())
+    {
+        if (tensor->isInitializer())
+        {
+            std::string t_var = getOrCreateTVariableName(tensor->getName());
+            code << t_var << " = Initializer(\"" << tensor->getName() << "\", "
+                 << dataTypeToString(tensor->getDataType()) << ", " << tensor->getShapeString()
+                 << ", raw_data=" << tensor->getRawDataHex() << ")\n";
+        }
+    }
+
+    // Generate Operations
+    for (auto it = topological_order_.begin(); it != topological_order_.end(); ++it)
+    {
+        auto &node = *it;
+        // For each output of this node
+        for (const auto *output : node->getOutputs())
+        {
+            std::string result_var = getOrCreateTVariableName(output->getName());
+
+            std::string op_line = result_var + " = " + node->getOpType() + "(";
+
+            // Add input operands
+            const auto &inputs = node->getInputs();
+            for (size_t i = 0; i < inputs.size(); ++i)
+            {
+                if (i > 0)
+                    op_line += ", ";
+                op_line += getOrCreateTVariableName(inputs[i]->getName());
+            }
+
+            // Add attributes
+            const std::string &attrs = node->getAttributesString();
+            if (!attrs.empty())
+            {
+                if (!inputs.empty())
+                    op_line += ", ";
+                op_line += attrs;
+            }
+
+            op_line += ")";
+            code << op_line << "\n";
+        }
+    }
+
+    // Generate Output tensors
+    for (const auto *tensor : getAllTensorSymbols())
+    {
+        if (tensor->isModelOutput())
+        {
+            std::string t_var = getOrCreateTVariableName(tensor->getName());
+            code << "Output(\"" << tensor->getName() << "\", " << t_var << ")\n";
+        }
+    }
+
+    return code.str();
+}
+
+std::string SymbolTable::dataTypeToString(DataType dtype)
+{
+    switch (dtype)
+    {
+    case DataType::FLOAT:
+        return "FLOAT";
+    case DataType::INT:
+        return "INT";
+    case DataType::STRING:
+        return "STRING";
+    case DataType::BOOL:
+        return "BOOL";
+    default:
+        return "UNDEFINED";
+    }
+}
+
+std::string SymbolTable::getOrCreateTVariableName(const std::string &original_name) const
+{
+    // Check if we already assigned a T-variable name
+    auto it = tensor_to_t_mapping_.find(original_name);
+    if (it != tensor_to_t_mapping_.end())
+    {
+        return it->second;
+    }
+
+    // Create new T-variable name
+    std::string t_name = "T" + std::to_string(t_variable_counter_++);
+    tensor_to_t_mapping_[original_name] = t_name;
+    return t_name;
+}
+
+bool SymbolTable::isModelInputOrOutput(const TensorSymbol *tensor)
+{
+    if (!tensor)
+        return false;
+    return tensor->isModelInput() || tensor->isModelOutput() || tensor->isInitializer();
 }
 
 } // namespace sonnx

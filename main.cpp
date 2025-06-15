@@ -5,11 +5,16 @@
 #include "error_listener/ParserErrorListener.hpp"
 #include "error_listener/ParserErrorStrategy.hpp"
 #include "visitor/ASTConstructionVisitor.hpp"
-#include "visitor/ASTOutputVisitor.hpp"
 #include <exception>
 #include <iostream>
 #include <memory>
 #include <visitor/ASTSemanticVisitor.hpp>
+
+// #define OUTPUT_AST
+
+#ifdef OUTPUT_AST
+#include "visitor/ASTOutputVisitor.hpp"
+#endif
 
 auto main(const int argc, char *argv[]) -> int
 {
@@ -19,103 +24,78 @@ auto main(const int argc, char *argv[]) -> int
         return 1;
     }
 
-    const auto file_stream = std::make_unique<antlr4::ANTLRFileStream>();
-    file_stream->loadFromFile(argv[1]);
-    auto lexer = std::make_unique<antlr_sonnx::S_ONNXLexer>(file_stream.get());
-    lexer->removeErrorListeners(); // Remove default console error listener
-    auto lexicalErrorListener = std::make_unique<sonnx::LexicalErrorListener>();
-    lexer->addErrorListener(lexicalErrorListener.get());
-
     try
     {
-        // Lexical Analysis
-        auto tokens = std::make_unique<antlr4::CommonTokenStream>(lexer.get());
-        tokens->fill();
-        std::cout << "Lexical analysis completed successfully." << std::endl;
-        // Parser Setup and Parsing
-        auto parser = std::make_unique<antlr_sonnx::S_ONNXParser>(tokens.get());
-        parser->setBuildParseTree(true);
+        const auto file_stream = std::make_unique<antlr4::ANTLRFileStream>();
+        file_stream->loadFromFile(argv[1]);
+        auto lexer = std::make_unique<antlr_sonnx::S_ONNXLexer>(file_stream.get());
+        lexer->removeErrorListeners();
+        auto lexicalErrorListener = std::make_unique<sonnx::LexicalErrorListener>();
+        lexer->addErrorListener(lexicalErrorListener.get());
+        auto token_stream = std::make_unique<antlr4::CommonTokenStream>(lexer.get());
+        token_stream->fill();
+
+        auto parser = std::make_unique<antlr_sonnx::S_ONNXParser>(token_stream.get());
         parser->removeErrorListeners();
-
         auto parserErrorListener = std::make_unique<sonnx::ParserErrorListener>();
+        auto errorStrategy = std::make_unique<sonnx::ParserErrorStrategy>();
         parser->addErrorListener(parserErrorListener.get());
-        parser->setErrorHandler(std::make_unique<sonnx::ParserErrorStrategy>());
+        parser->setErrorHandler(std::move(errorStrategy));
 
-        std::cout << "Starting to parse..." << std::endl;
         auto parseTree = parser->model();
-        std::cout << "Parsing completed successfully." << std::endl;
+        auto visitor = std::make_unique<sonnx::ASTConstructionVisitor>();
+        visitor->visit(parseTree);
+        auto model = visitor->getTop();
 
-        // AST Construction with immediate error termination
-        std::cout << "Building AST..." << std::endl;
-        try
+        if (!model)
         {
-            auto visitor = std::make_unique<sonnx::ASTConstructionVisitor>();
-            visitor->visit(parseTree);
-            auto model = visitor->getTop();
-
-            if (!model)
-            {
-                std::cerr << "FATAL AST construction error: visitor returned null model" << std::endl;
-                return 1;
-            }
-
-            std::cout << "AST construction completed successfully." << std::endl;
-
-            auto *model_ptr = dynamic_cast<sonnx::ModelNode *>(model.get());
-            if (model_ptr != nullptr)
-            {
-                // First, perform semantic analysis
-                auto semantic_visitor = std::make_unique<sonnx::ASTSemanticVisitor>();
-                semantic_visitor->visit(*model_ptr);
-                // Check for semantic errors
-                if (semantic_visitor->hasErrors())
-                {
-                    std::cerr << "Semantic analysis failed with errors:\n";
-                    for (const auto &error : semantic_visitor->getErrors())
-                    {
-                        std::cerr << "- " << error << '\n';
-                    }
-                    return 1;
-                }
-                // If semantic analysis passed, then output the AST
-                auto output_visitor = std::make_unique<sonnx::ASTOutputVisitor>();
-                output_visitor->visit(*model_ptr);
-                std::cout << output_visitor->getResult() << '\n';
-
-                // Optionally, you can also access the built DAG and symbol table
-                const auto &symbol_table = semantic_visitor->getSymbolTable();
-                if (symbol_table.hasCycle())
-                {
-                    std::cerr << "Warning: Cycle detected in computation graph\n";
-                }
-            }
-            else
-            {
-                std::cerr << "Error: Failed to construct valid model AST!" << '\n';
-                return 1;
-            }
-        }
-        catch (const antlr4::ParseCancellationException &e)
-        {
-            std::cerr << e.what() << std::endl; // Prints "FATAL AST construction error..."
+            std::cerr << "FATAL AST construction error: visitor returned null model" << std::endl;
             return 1;
         }
+
+        auto *model_ptr = dynamic_cast<sonnx::ModelNode *>(model.get());
+        if (!model_ptr)
+        {
+            std::cerr << "Error: Failed to cast to ModelNode!" << '\n';
+            return 1;
+        }
+
+#ifdef OUTPUT_AST
+        auto ast_output_visitor = std::make_unique<sonnx::ASTOutputVisitor>();
+        ast_output_visitor->visit(*model_ptr);
+        std::cout << ast_output_visitor->getResult() << std::endl;
+#endif
+
+        auto semantic_visitor = std::make_unique<sonnx::ASTSemanticVisitor>();
+        semantic_visitor->visit(*model_ptr);
+
+        if (semantic_visitor->hasErrors())
+        {
+            std::cerr << "Semantic analysis failed with errors:\n";
+            for (const auto &error : semantic_visitor->getErrors())
+            {
+                std::cerr << "- " << error << '\n';
+            }
+            return 1;
+        }
+
+        const auto &symbol_table = semantic_visitor->getSymbolTable();
+        if (symbol_table.hasCycle())
+        {
+            std::cerr << "Warning: Cycle detected in computation graph\n";
+        }
+
+        std::cout << symbol_table.generateTACode() << std::endl;
+        return 0;
     }
     catch (const antlr4::ParseCancellationException &e)
     {
-        std::cerr << e.what() << std::endl; // Lexical/Parser errors
+        std::cerr << "Compilation aborted: " << e.what() << std::endl;
         return 1;
     }
-    catch (const std::runtime_error &e)
+    catch (const std::exception &e)
     {
-        std::cerr << "Runtime error: " << e.what() << std::endl;
+        std::cerr << "Unexpected error: " << e.what() << std::endl;
         return 1;
     }
-    catch (...)
-    {
-        std::cerr << "Unknown error occurred!" << '\n';
-        return 1;
-    }
-
-    return 0;
 }

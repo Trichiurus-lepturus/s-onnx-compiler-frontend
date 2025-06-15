@@ -318,20 +318,6 @@ void ASTOutputVisitor::visit(const IOShapeNode &node)
     m_ss << ")\n";
 }
 
-void ASTOutputVisitor::visit(const IODimNode &node)
-{
-    addIndent();
-    m_ss << "(" << nodeTypeToString(node.getASTNodeType()) << "\n";
-    ++m_indent_level;
-    if (node.getValue() != nullptr)
-    {
-        node.getValue()->accept(*this);
-    }
-    --m_indent_level;
-    addIndent();
-    m_ss << ")\n";
-}
-
 void ASTOutputVisitor::visit(const InitTensorNode &node)
 {
     addIndent();

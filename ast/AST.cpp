@@ -73,10 +73,6 @@ void IOShapeNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);
 }
-void IODimNode::accept(ASTBaseVisitor &visitor) const
-{
-    visitor.visit(*this);
-}
 void InitTensorNode::accept(ASTBaseVisitor &visitor) const
 {
     visitor.visit(*this);

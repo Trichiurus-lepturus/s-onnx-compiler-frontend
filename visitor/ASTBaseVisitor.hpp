@@ -31,7 +31,6 @@ class ASTBaseVisitor
     virtual void visit(const class AttributeNode &node) = 0;
     virtual void visit(const class IOTensorNode &node) = 0;
     virtual void visit(const class IOShapeNode &node) = 0;
-    virtual void visit(const class IODimNode &node) = 0;
     virtual void visit(const class InitTensorNode &node) = 0;
     virtual void visit(const class InitShapeNode &node) = 0;
     virtual void visit(const class ErrorNode &node) = 0;

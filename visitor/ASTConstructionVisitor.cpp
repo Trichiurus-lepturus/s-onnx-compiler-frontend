@@ -911,6 +911,7 @@ std::any ASTConstructionVisitor::visitDim_list(antlr_sonnx::S_ONNXParser::Dim_li
             io_dims.push_back(std::move(stack_.top()));
             stack_.pop();
         }
+        std::reverse(io_dims.begin(), io_dims.end());
         auto input_list = std::make_unique<IOShapeNode>(std::move(io_dims));
         stack_.push(std::move(input_list));
     }

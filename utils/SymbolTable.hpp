@@ -39,6 +39,8 @@ class NodeSymbol final : public BaseSymbol
     std::vector<const TensorSymbol *> inputs_;
     std::vector<const TensorSymbol *> outputs_;
 
+    std::string attributes_string_; // For storing attributes as "kernel_shape=[3, 3], strides=[1, 1]"
+
   public:
     NodeSymbol(std::string name, std::string op_type, const ASTNode *def)
         : BaseSymbol(std::move(name), def), op_type_(std::move(op_type))
@@ -59,6 +61,15 @@ class NodeSymbol final : public BaseSymbol
     {
         return outputs_;
     }
+
+    void setAttributesString(const std::string &attrs)
+    {
+        attributes_string_ = attrs;
+    }
+    const std::string &getAttributesString() const
+    {
+        return attributes_string_;
+    }
 };
 
 class TensorSymbol final : public BaseSymbol
@@ -72,9 +83,11 @@ class TensorSymbol final : public BaseSymbol
     bool is_model_input_ = false;
     bool is_model_output_ = false;
 
+    std::string shape_string_; // For storing shape as "[1, 3, 224, 224]"
+    std::string raw_data_hex_; // For storing raw data as "0x..."
+
   public:
-    TensorSymbol(std::string name, DataType dtype, const ASTNode *def)
-        : BaseSymbol(std::move(name), def), dtype_(dtype)
+    TensorSymbol(std::string name, DataType dtype, const ASTNode *def) : BaseSymbol(std::move(name), def), dtype_(dtype)
     {
     }
 
@@ -123,6 +136,24 @@ class TensorSymbol final : public BaseSymbol
     {
         is_model_output_ = value;
     }
+
+    void setShapeString(const std::string &shape)
+    {
+        shape_string_ = shape;
+    }
+    const std::string &getShapeString() const
+    {
+        return shape_string_;
+    }
+
+    void setRawDataHex(const std::string &hex)
+    {
+        raw_data_hex_ = hex;
+    }
+    const std::string &getRawDataHex() const
+    {
+        return raw_data_hex_;
+    }
 };
 
 class SymbolTable
@@ -138,7 +169,7 @@ class SymbolTable
 
     // Helper for topological sort
     bool topologicalSortDFS(NodeSymbol *node, std::unordered_set<NodeSymbol *> &visited,
-                           std::unordered_set<NodeSymbol *> &recursion_stack);
+                            std::unordered_set<NodeSymbol *> &recursion_stack);
 
   public:
     // Symbol management
@@ -156,7 +187,7 @@ class SymbolTable
     void buildDAG();
     void performTopologicalSort();
     void detectConstantFolding();
-    void detectDeadCode();
+    void detectDeadCode() const;
     void detectCommonSubexpressions();
 
     // DAG access
@@ -174,6 +205,15 @@ class SymbolTable
     }
 
     void clear();
+
+    std::string generateTACode() const;
+
+private:
+    static std::string dataTypeToString(DataType dtype);
+    mutable int t_variable_counter_ = 1;
+    mutable std::unordered_map<std::string, std::string> tensor_to_t_mapping_;
+    std::string getOrCreateTVariableName(const std::string& original_name) const;
+    static bool isModelInputOrOutput(const TensorSymbol* tensor) ;
 };
 
 } // namespace sonnx

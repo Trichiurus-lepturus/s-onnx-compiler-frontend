@@ -518,26 +518,6 @@ class IOShapeNode final : public ASTNode
     std::vector<std::unique_ptr<ASTNode>> io_dims_;
 };
 
-class IODimNode final : public ASTNode
-{
-  public:
-    explicit IODimNode(std::unique_ptr<ASTNode> value_or_param) : value_or_param_(std::move(value_or_param))
-    {
-    }
-    [[nodiscard]] auto getASTNodeType() const -> NodeType override
-    {
-        return NodeType::IO_DIM;
-    }
-    void accept(ASTBaseVisitor &visitor) const override;
-    [[nodiscard]] auto getValue() const -> const ASTNode *
-    {
-        return value_or_param_.get();
-    }
-
-  private:
-    std::unique_ptr<ASTNode> value_or_param_;
-};
-
 class InitTensorNode final : public ASTNode
 {
   public:
